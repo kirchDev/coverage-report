@@ -9,7 +9,7 @@ import { present } from './helpers.ts';
 
 const ROOT = join(import.meta.dirname, '..');
 const FIXTURES = join(import.meta.dirname, 'fixtures');
-const CLI = join(ROOT, 'bin', 'coverage-report.js');
+const CLI = join(ROOT, 'src', 'bin.ts');
 
 const REPORTS = [
   join(FIXTURES, 'sample.lcov.info'),

@@ -4,8 +4,11 @@
 
 **Coverage on your pull requests — total, delta and patch — straight from the reports your CI already writes**
 
+[![npm Version](https://img.shields.io/npm/v/@kirchdev/coverage-report.svg?style=flat-square&color=4f46e5)](https://www.npmjs.com/package/@kirchdev/coverage-report)
+[![Downloads](https://img.shields.io/npm/dm/@kirchdev/coverage-report.svg?style=flat-square&color=4f46e5)](https://www.npmjs.com/package/@kirchdev/coverage-report)
 [![Tests](https://img.shields.io/github/actions/workflow/status/kirchDev/coverage-report/ci.yml?branch=main&style=flat-square&label=tests)](https://github.com/kirchDev/coverage-report/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-10b981?style=flat-square)](LICENSE)
+[![Node Version](https://img.shields.io/node/v/@kirchdev/coverage-report.svg?style=flat-square&color=8993be)](https://www.npmjs.com/package/@kirchdev/coverage-report)
+[![License: MIT](https://img.shields.io/npm/l/@kirchdev/coverage-report.svg?style=flat-square&color=10b981)](LICENSE)
 
 </div>
 
@@ -45,13 +48,21 @@ steps:
 ```
 
 > [!IMPORTANT]
-> `v0.1.0` is not tagged yet — pin `@main` until it is. There is no floating `@v0` or `@v1` tag and there will not be one: a 0.x minor is allowed to break, so a tag that follows it would promise more than the version does.
+> Neither the tag nor the npm package exists yet — pin `@main` for the Action until `v0.1.0` is released. There is no floating `@v0` or `@v1` tag and there will not be one: a 0.x minor is allowed to break, so a tag that follows it would promise more than the version does.
 
 The same run locally — the CLI is the Action without its GitHub half, which is what makes a disagreement between a local check and a pull-request comment debuggable:
 
 ```bash
+pnpm add -D @kirchdev/coverage-report   # or npx @kirchdev/coverage-report
+
 coverage-report render coverage/lcov.info coverage.xml \
   --diff <(git diff origin/dev...HEAD) --min-patch 80
+```
+
+The parsers, the merge and the diff mapping are importable too, if you want the numbers rather than the markdown:
+
+```js
+import { buildReport } from '@kirchdev/coverage-report';
 ```
 
 Worked workflows: [one suite](examples/single-format.yml), [Vitest and Pest merged into one number](examples/monorepo-two-languages.yml), [two reports kept deliberately apart](examples/two-separate-reports.yml), [no base state at all](examples/no-base-state.yml), [the CLI](examples/cli.sh).
@@ -106,6 +117,8 @@ pnpm test:coverage  # this repository measures itself with itself
 ```
 
 `dist/index.js` is committed, because a `node24` action runs the file `action.yml` points at from a checkout with no `node_modules`. `pnpm check:dist` rebuilds it into a temporary file and compares, so a bundle that has drifted from `src/` fails CI instead of shipping.
+
+The npm package is a separate build (`pnpm build:npm` → `lib/`, run automatically on `prepack`). It cannot ship the TypeScript sources: Node refuses to strip types under `node_modules`, so a package whose entry points at a `.ts` file fails on the consumer's first import.
 
 ## 🤝 Contributing
 

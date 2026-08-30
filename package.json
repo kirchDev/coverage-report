@@ -1,6 +1,6 @@
 {
   "$schema": "https://www.schemastore.org/package.json",
-  "name": "coverage-report",
+  "name": "@kirchdev/coverage-report",
   "version": "0.1.0",
   "description": "Coverage reporting on pull requests, straight from the reports your CI already writes — no third-party service.",
   "keywords": [
@@ -32,21 +32,26 @@
     "url": "git+https://github.com/kirchDev/coverage-report.git"
   },
   "bin": {
-    "coverage-report": "./bin/coverage-report.js"
+    "coverage-report": "./lib/bin.js"
   },
   "files": [
-    "action.yml",
-    "bin",
-    "dist",
-    "src"
+    "lib"
   ],
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
     "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "scripts": {
     "build": "node scripts/build.js",
+    "build:npm": "tsc -p tsconfig.build.json",
     "check": "pnpm lint && pnpm format && pnpm check:types && pnpm check:policy && pnpm check:dist && pnpm test",
     "check:dist": "node scripts/check-dist.js",
     "check:fix": "pnpm lint:fix && pnpm format:fix",
@@ -56,6 +61,7 @@
     "format:fix": "oxfmt .",
     "lint": "oxlint . --deny-warnings",
     "lint:fix": "oxlint . --fix --deny-warnings",
+    "prepack": "pnpm build:npm",
     "prepare": "husky",
     "skills:update": "pnpm dlx skills@latest update -p -y",
     "taze": "taze",

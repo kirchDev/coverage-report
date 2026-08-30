@@ -1,0 +1,19 @@
+{
+  // The npm build. Node refuses to strip types under node_modules, so a package
+  // whose entry points at a .ts file is broken for every consumer — the sources
+  // have to be compiled before they are published.
+  //
+  // `rewriteRelativeImportExtensions` is what makes the `.ts` specifiers the
+  // source uses come out as `.js` in the emit, so one spelling works both when
+  // Node runs the sources directly and when it loads the built package.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "lib",
+    "rootDir": "src",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true
+  },
+  "include": ["src"]
+}
