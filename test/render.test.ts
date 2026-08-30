@@ -1,32 +1,14 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import {
-  createReport,
-  fileOf,
-  recordHits,
-  recordKey,
-  reportTotals,
-  toSummary
-} from '../src/coverage.js';
-import { coverageDelta, patchCoverage } from '../src/patch.js';
+import { reportTotals, toSummary } from '../src/coverage.ts';
+import { coverageDelta, patchCoverage } from '../src/patch.ts';
+import { present, reportOf } from './helpers.ts';
 import {
   marker,
   renderCheckSummary,
   renderMarkdown,
   thresholdFailures
-} from '../src/render.js';
-
-function reportOf(files) {
-  const report = createReport();
-  for (const [path, lines] of Object.entries(files)) {
-    const file = fileOf(report, path);
-    for (const [line, hits] of Object.entries(lines)) {
-      recordKey(file.lines, Number(line));
-      if (hits > 0) recordHits(file.lines, Number(line), hits);
-    }
-  }
-  return report;
-}
+} from '../src/render.ts';
 
 const report = reportOf({ 'src/a.js': { 1: 1, 2: 0, 3: 1, 4: 0 } });
 const totals = reportTotals(report);
@@ -61,9 +43,12 @@ describe('the comment body', () => {
     // Line 4 is uncovered too, and is not in the diff. The file's row lists the
     // changed line 2 and stops there — that is the whole difference between
     // patch coverage and a changed file's coverage.
-    const row = renderMarkdown({ totals, patch })
-      .split('\n')
-      .find((line) => line.includes('`src/a.js`'));
+    const row = present(
+      renderMarkdown({ totals, patch })
+        .split('\n')
+        .find((line) => line.includes('`src/a.js`')),
+      'the row for src/a.js'
+    );
 
     assert.deepEqual(
       row.split('|').map((cell) => cell.trim()),
@@ -169,13 +154,9 @@ describe('thresholds', () => {
 });
 
 describe('the check-run summary', () => {
-  it('does not repeat the failures the check run lists under it', () => {
-    assert.equal(
-      renderCheckSummary({ totals, patch }),
-      renderCheckSummary({ totals, patch, thresholds: { total: 90 } })
-    );
-  });
-
+  // It takes no thresholds by signature — the check run appends the failures as
+  // a list beneath this line, and a summary that repeated them printed each one
+  // twice. That is now a type error rather than a test.
   it('fits on one line beside twenty other checks', () => {
     const summary = renderCheckSummary({ totals, patch });
     assert.equal(summary.includes('\n'), false);

@@ -1,8 +1,29 @@
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
-import { readContext, readInputs, run } from '../src/action.js';
-import { baseStatePath } from '../src/github/base-state.js';
+import { readContext, readInputs, run } from '../src/action.ts';
+import type { Summary } from '../src/coverage.ts';
+import type { FetchLike, FetchResponse } from '../src/github/api.ts';
+import { present } from './helpers.ts';
+
+/** One recorded call against the fake, in the order it was made. */
+interface RecordedCall {
+  method: string;
+  path: string;
+  body: Record<string, any> | null;
+}
+
+interface FakeComment {
+  id: number;
+  body: string;
+}
+
+interface FakeOptions {
+  comments?: FakeComment[];
+  baseState?: Partial<Summary> | null;
+  branchExists?: boolean;
+}
+import { baseStatePath } from '../src/github/base-state.ts';
 
 const FIXTURES = join(import.meta.dirname, 'fixtures');
 
@@ -30,10 +51,10 @@ function fakeGitHub({
   comments = [],
   baseState = null,
   branchExists = false
-} = {}) {
-  const calls = [];
+}: FakeOptions = {}): { fetchImpl: FetchLike; calls: RecordedCall[] } {
+  const calls: RecordedCall[] = [];
 
-  async function fetchImpl(url, options) {
+  const fetchImpl: FetchLike = async (url, options) => {
     const path = url.replace('https://api.github.com', '');
     calls.push({
       method: options.method,
@@ -100,12 +121,12 @@ function fakeGitHub({
       return json({ id: 2 });
 
     return json({});
-  }
+  };
 
   return { fetchImpl, calls };
 }
 
-function json(body, status = 200) {
+function json(body: unknown, status = 200): FetchResponse {
   return {
     ok: status >= 200 && status < 300,
     status,
@@ -114,10 +135,25 @@ function json(body, status = 200) {
   };
 }
 
-function find(calls, method, fragment) {
+function find(
+  calls: RecordedCall[],
+  method: string,
+  fragment: string
+): RecordedCall[] {
   return calls.filter(
     (call) => call.method === method && call.path.includes(fragment)
   );
+}
+
+/** The body of the one call matching, so a test can assert on what was sent. */
+function bodyOf(
+  calls: RecordedCall[],
+  method: string,
+  fragment: string
+): Record<string, any> {
+  const matches = find(calls, method, fragment);
+  assert.equal(matches.length, 1, `expected one ${method} ${fragment}`);
+  return present(matches[0], 'call').body ?? {};
 }
 
 describe('inputs', () => {
@@ -223,7 +259,8 @@ describe('a pull-request run', () => {
     const result = await run(PULL_REQUEST_ENV, { fetchImpl: github.fetchImpl });
 
     // The diff adds line 2 of src/calculator.js, which lcov records as covered.
-    assert.deepEqual([result.patch.covered, result.patch.total], [1, 1]);
+    const patch = present(result.patch, 'patch coverage');
+    assert.deepEqual([patch.covered, patch.total], [1, 1]);
   });
 
   it('does not record a base state from a pull request', async () => {
@@ -247,12 +284,18 @@ describe('a pull-request run', () => {
       baseState: {
         schemaVersion: 1,
         sha: 'oldsha1',
-        totals: { lines: { covered: 4, total: 8, pct: 50 } }
+        totals: {
+          lines: { covered: 4, total: 8, pct: 50 },
+          branches: { covered: 0, total: 0, pct: 100 },
+          functions: { covered: 0, total: 0, pct: 100 },
+          files: 2
+        }
       }
     });
     const result = await run(PULL_REQUEST_ENV, { fetchImpl: github.fetchImpl });
 
-    assert.equal(result.delta.metrics.lines.pct, 12.5);
+    const delta = present(result.delta, 'delta');
+    assert.equal(present(delta.metrics.lines, 'lines delta').pct, 12.5);
     assert.match(result.markdown, /▲ \+12\.50%/);
   });
 
@@ -277,7 +320,7 @@ describe('a pull-request run', () => {
 
     assert.equal(result.failures.length, 1);
     assert.equal(
-      find(github.calls, 'POST', '/check-runs')[0].body.conclusion,
+      bodyOf(github.calls, 'POST', '/check-runs').conclusion,
       'failure'
     );
   });
@@ -289,7 +332,7 @@ describe('a pull-request run', () => {
     await run(PULL_REQUEST_ENV, { fetchImpl: github.fetchImpl });
 
     assert.equal(
-      find(github.calls, 'POST', '/check-runs')[0].body.conclusion,
+      bodyOf(github.calls, 'POST', '/check-runs').conclusion,
       'neutral'
     );
   });
@@ -302,7 +345,7 @@ describe('a pull-request run', () => {
     );
 
     assert.equal(
-      find(github.calls, 'POST', '/check-runs')[0].body.conclusion,
+      bodyOf(github.calls, 'POST', '/check-runs').conclusion,
       'success'
     );
   });
@@ -332,8 +375,10 @@ describe('a push run', () => {
     const github = fakeGitHub();
     await run(pushEnv, { fetchImpl: github.fetchImpl });
 
-    const blob = find(github.calls, 'POST', '/git/blobs')[0];
-    assert.match(blob.body.content, /"schemaVersion": 1/);
+    assert.match(
+      bodyOf(github.calls, 'POST', '/git/blobs').content,
+      /"schemaVersion": 1/
+    );
     assert.equal(find(github.calls, 'POST', '/git/refs').length, 1);
   });
 
@@ -341,10 +386,7 @@ describe('a push run', () => {
     const github = fakeGitHub({ branchExists: false });
     await run(pushEnv, { fetchImpl: github.fetchImpl });
 
-    assert.deepEqual(
-      find(github.calls, 'POST', '/git/commits')[0].body.parents,
-      []
-    );
+    assert.deepEqual(bodyOf(github.calls, 'POST', '/git/commits').parents, []);
   });
 
   it('adds to the existing branch rather than replacing its tree', async () => {
@@ -354,13 +396,12 @@ describe('a push run', () => {
     await run(pushEnv, { fetchImpl: github.fetchImpl });
 
     assert.equal(
-      find(github.calls, 'POST', '/git/trees')[0].body.base_tree,
+      bodyOf(github.calls, 'POST', '/git/trees').base_tree,
       'treesha'
     );
-    assert.deepEqual(
-      find(github.calls, 'POST', '/git/commits')[0].body.parents,
-      ['parentsha']
-    );
+    assert.deepEqual(bodyOf(github.calls, 'POST', '/git/commits').parents, [
+      'parentsha'
+    ]);
   });
 
   it('posts no comment when there is no pull request to comment on', async () => {

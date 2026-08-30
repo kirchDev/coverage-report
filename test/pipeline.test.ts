@@ -4,7 +4,8 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
-import { buildReport } from '../src/pipeline.js';
+import { buildReport } from '../src/pipeline.ts';
+import { present } from './helpers.ts';
 
 const ROOT = join(import.meta.dirname, '..');
 const FIXTURES = join(import.meta.dirname, 'fixtures');
@@ -15,13 +16,14 @@ const REPORTS = [
   join(FIXTURES, 'sample.clover.xml')
 ];
 
-function cli(args, options = {}) {
+function cli(args: string[]): string {
   return execFileSync(process.execPath, [CLI, ...args], {
     encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-    ...options
+    stdio: ['ignore', 'pipe', 'pipe']
   });
 }
+
+const [FIRST_REPORT, SECOND_REPORT] = REPORTS as [string, string];
 
 describe('buildReport', () => {
   it('merges every report given to it into one set of totals', async () => {
@@ -47,9 +49,10 @@ describe('buildReport', () => {
     // The diff adds line 2 of src/calculator.js, which lcov records as run, and
     // one line of README.md, which no coverage report has anything to say
     // about. Only the first is counted, either way.
-    assert.deepEqual([result.patch.covered, result.patch.total], [1, 1]);
+    const patch = present(result.patch, 'patch coverage');
+    assert.deepEqual([patch.covered, patch.total], [1, 1]);
     assert.deepEqual(
-      result.patch.files.map((file) => file.path),
+      patch.files.map((file) => file.path),
       ['src/calculator.js']
     );
   });
@@ -61,8 +64,9 @@ describe('buildReport', () => {
       base: join(FIXTURES, 'base-state.json')
     });
 
-    assert.equal(result.delta.metrics.lines.pct, 37.5);
-    assert.equal(result.delta.base.sha, 'basesha1');
+    const delta = present(result.delta, 'delta');
+    assert.equal(present(delta.metrics.lines, 'lines delta').pct, 37.5);
+    assert.equal(delta.base.sha, 'basesha1');
   });
 
   it('reports a missed threshold without throwing, so the caller decides', async () => {
@@ -111,7 +115,8 @@ describe('the command line', () => {
     // The failure this prevents: half a monorepo measured, and a comment that
     // looks entirely healthy about it.
     assert.throws(
-      () => cli(['report', '--report', REPORTS[0], '--report', REPORTS[1]]),
+      () =>
+        cli(['report', '--report', FIRST_REPORT, '--report', SECOND_REPORT]),
       /comma-separated/
     );
   });
@@ -128,7 +133,7 @@ describe('the command line', () => {
           '--min-total',
           '99'
         ]),
-      (error) => error.status === 1
+      (error: unknown) => (error as { status?: number }).status === 1
     );
   });
 

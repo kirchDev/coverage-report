@@ -2,17 +2,23 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
-import { fileTotals, reportTotals } from '../src/coverage.js';
-import { detectFormat, parseContent } from '../src/parsers/index.js';
+import { fileTotals, reportTotals } from '../src/coverage.ts';
+import {
+  detectFormat,
+  parseContent,
+  type ParseOptions,
+  type ParseResult
+} from '../src/parsers/index.ts';
+import { present } from './helpers.ts';
 
 const FIXTURES = join(import.meta.dirname, 'fixtures');
 const ROOT = '/build/workspace';
 
-function load(name) {
+function load(name: string): string {
   return readFileSync(join(FIXTURES, name), 'utf8');
 }
 
-function parse(name, options = {}) {
+function parse(name: string, options: ParseOptions = {}): ParseResult {
   return parseContent(load(name), { root: ROOT, ...options });
 }
 
@@ -39,7 +45,10 @@ describe('format detection', () => {
 describe('lcov', () => {
   it('reads lines, branches and functions from the raw records', () => {
     const { report } = parse('sample.lcov.info');
-    const file = report.files.get('src/calculator.js');
+    const file = present(
+      report.files.get('src/calculator.js'),
+      'src/calculator.js'
+    );
 
     assert.deepEqual(fileTotals(file).lines, { covered: 2, total: 4, pct: 50 });
     assert.deepEqual(fileTotals(file).branches, {
@@ -57,7 +66,10 @@ describe('lcov', () => {
   it('treats an unreached branch (`-`) as uncovered rather than as missing', () => {
     const { report } = parse('sample.lcov.info');
     assert.equal(
-      report.files.get('src/calculator.js').branches.get('2:0:1'),
+      present(
+        report.files.get('src/calculator.js'),
+        'src/calculator.js'
+      ).branches.get('2:0:1'),
       0
     );
   });
@@ -81,7 +93,9 @@ describe('cobertura', () => {
     // Those lines repeat the class body. Line coverage would survive it, since
     // lines are keyed by number — the function metric would not.
     const { report } = parse('sample.cobertura.xml');
-    const totals = fileTotals(report.files.get('src/calculator.js'));
+    const totals = fileTotals(
+      present(report.files.get('src/calculator.js'), 'src/calculator.js')
+    );
     assert.deepEqual(totals.lines, { covered: 2, total: 4, pct: 50 });
     assert.deepEqual(totals.functions, { covered: 1, total: 2, pct: 50 });
   });
@@ -89,7 +103,9 @@ describe('cobertura', () => {
   it('expands condition-coverage into countable branches', () => {
     const { report } = parse('sample.cobertura.xml');
     assert.deepEqual(
-      fileTotals(report.files.get('src/calculator.js')).branches,
+      fileTotals(
+        present(report.files.get('src/calculator.js'), 'src/calculator.js')
+      ).branches,
       {
         covered: 1,
         total: 2,
@@ -105,7 +121,12 @@ describe('clover', () => {
     // and Cobertura emits no line for them at all. Counting them here would make
     // one test run report two different line totals depending on the export.
     const { report } = parse('sample.clover.xml');
-    const totals = fileTotals(report.files.get('app/Services/Catalog.php'));
+    const totals = fileTotals(
+      present(
+        report.files.get('app/Services/Catalog.php'),
+        'app/Services/Catalog.php'
+      )
+    );
 
     assert.deepEqual(totals.lines, { covered: 2, total: 3, pct: 66.67 });
     assert.deepEqual(totals.functions, { covered: 1, total: 1, pct: 100 });
@@ -114,7 +135,12 @@ describe('clover', () => {
   it('reads truecount/falsecount as covered and uncovered conditions', () => {
     const { report } = parse('sample.clover.xml');
     assert.deepEqual(
-      fileTotals(report.files.get('app/Services/Catalog.php')).branches,
+      fileTotals(
+        present(
+          report.files.get('app/Services/Catalog.php'),
+          'app/Services/Catalog.php'
+        )
+      ).branches,
       {
         covered: 1,
         total: 2,
@@ -127,7 +153,9 @@ describe('clover', () => {
 describe('istanbul', () => {
   it('folds several statements on one line into a single line record', () => {
     const { report } = parse('sample.istanbul.json');
-    const totals = fileTotals(report.files.get('src/calculator.js'));
+    const totals = fileTotals(
+      present(report.files.get('src/calculator.js'), 'src/calculator.js')
+    );
 
     // Line 2 holds two statements, one of them never executed. The line still
     // counts once, and it counts as covered.
@@ -146,9 +174,11 @@ describe('the formats agree', () => {
     // Three exports of one run must come to one number, or a repository would
     // get a different total by changing a reporter.
     const shared = 'src/calculator.js';
-    const lcov = fileTotals(parse('sample.lcov.info').report.files.get(shared));
+    const lcov = fileTotals(
+      present(parse('sample.lcov.info').report.files.get(shared), shared)
+    );
     const cobertura = fileTotals(
-      parse('sample.cobertura.xml').report.files.get(shared)
+      present(parse('sample.cobertura.xml').report.files.get(shared), shared)
     );
 
     assert.deepEqual(lcov.lines, cobertura.lines);

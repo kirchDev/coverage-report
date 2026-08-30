@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { normalisePath } from '../src/paths.js';
+import { normalisePath } from '../src/paths.ts';
 
 /**
  * A merge is keyed on the path. Two reports that spell the same file differently

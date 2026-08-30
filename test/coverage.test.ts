@@ -1,28 +1,13 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
-  createReport,
-  fileOf,
   mergeReports,
   percentage,
-  recordHits,
-  recordKey,
   reportTotals,
   toSummary
-} from '../src/coverage.js';
-import { coverageDelta, patchCoverage } from '../src/patch.js';
-
-function reportOf(files) {
-  const report = createReport();
-  for (const [path, lines] of Object.entries(files)) {
-    const file = fileOf(report, path);
-    for (const [line, hits] of Object.entries(lines)) {
-      recordKey(file.lines, Number(line));
-      if (hits > 0) recordHits(file.lines, Number(line), hits);
-    }
-  }
-  return report;
-}
+} from '../src/coverage.ts';
+import { coverageDelta, patchCoverage } from '../src/patch.ts';
+import { present, reportOf } from './helpers.ts';
 
 describe('merging', () => {
   it('adds up two reports covering different files — the monorepo case', () => {
@@ -96,7 +81,7 @@ describe('patch coverage', () => {
       report,
       new Map([['src/a.js', new Set([1, 2, 3])]])
     );
-    assert.deepEqual(patch.files[0].uncovered, [2]);
+    assert.deepEqual(present(patch.files[0]).uncovered, [2]);
   });
 
   it('ignores a changed line the report says nothing about', () => {
@@ -157,10 +142,11 @@ describe('delta against the base state', () => {
       reportOf({ 'src/a.js': { 1: 1, 2: 0, 3: 0, 4: 0 } }),
       { sha: 'abc' }
     );
-    const delta = coverageDelta(now, base);
+    const delta = present(coverageDelta(now, base), 'delta');
+    const lines = present(delta.metrics.lines, 'lines delta');
 
-    assert.equal(delta.metrics.lines.pct, 25);
-    assert.equal(delta.metrics.lines.before, 25);
+    assert.equal(lines.pct, 25);
+    assert.equal(lines.before, 25);
     assert.equal(delta.base.sha, 'abc');
   });
 });
@@ -175,6 +161,6 @@ describe('the base-state summary', () => {
     assert.equal(summary.schemaVersion, 1);
     assert.equal(summary.sha, 'abc123');
     assert.equal(summary.ref, 'dev');
-    assert.deepEqual(summary.files['src/a.js'].lines, [1, 2]);
+    assert.deepEqual(present(summary.files['src/a.js']).lines, [1, 2]);
   });
 });

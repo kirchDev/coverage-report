@@ -4,7 +4,8 @@ import {
   formatLineRanges,
   parsePatchHunks,
   parseUnifiedDiff
-} from '../src/diff.js';
+} from '../src/diff.ts';
+import { present } from './helpers.ts';
 
 /**
  * The diff reader is the part that decides whether patch coverage is a real
@@ -24,7 +25,7 @@ describe('parseUnifiedDiff', () => {
  const e = 5;
 `);
 
-    assert.deepEqual([...changed.get('src/a.js')], [2, 3]);
+    assert.deepEqual([...present(changed.get('src/a.js'))], [2, 3]);
   });
 
   it('does not count context lines as changed', () => {
@@ -40,7 +41,7 @@ describe('parseUnifiedDiff', () => {
  untouched();
 `);
 
-    assert.deepEqual([...changed.get('src/a.js')], [11]);
+    assert.deepEqual([...present(changed.get('src/a.js'))], [11]);
   });
 
   it('ignores removed lines, which cannot be covered by anything', () => {
@@ -81,7 +82,7 @@ rename to src/new.js
  kept();
 `);
 
-    assert.deepEqual([...changed.get('src/new.js')], [4]);
+    assert.deepEqual([...present(changed.get('src/new.js'))], [4]);
   });
 
   it('reads a hunk header with the line count omitted as a count of one', () => {
@@ -92,7 +93,7 @@ rename to src/new.js
 +after();
 `);
 
-    assert.deepEqual([...changed.get('src/a.js')], [7]);
+    assert.deepEqual([...present(changed.get('src/a.js'))], [7]);
   });
 
   it('does not let the no-newline marker advance the line counter', () => {
@@ -106,7 +107,7 @@ rename to src/new.js
 \\ No newline at end of file
 `);
 
-    assert.deepEqual([...changed.get('src/a.js')], [2]);
+    assert.deepEqual([...present(changed.get('src/a.js'))], [2]);
   });
 
   it('handles several files and several hunks in one diff', () => {
@@ -125,8 +126,8 @@ rename to src/new.js
 +six();
 `);
 
-    assert.deepEqual([...changed.get('src/a.js')], [2, 22]);
-    assert.deepEqual([...changed.get('src/b.js')], [6]);
+    assert.deepEqual([...present(changed.get('src/a.js'))], [2, 22]);
+    assert.deepEqual([...present(changed.get('src/b.js'))], [6]);
   });
 
   it('reads a combined-diff header without shifting the new-side numbers', () => {
@@ -138,7 +139,7 @@ rename to src/new.js
   three();
 `);
 
-    assert.deepEqual([...changed.get('src/a.js')], [2]);
+    assert.deepEqual([...present(changed.get('src/a.js'))], [2]);
   });
 });
 
