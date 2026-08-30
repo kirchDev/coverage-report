@@ -24,3 +24,9 @@ strictPeerDependencies: false
 
 # Use pnpm's isolated node_modules linker layout.
 nodeLinker: isolated
+
+# esbuild ships a platform-specific binary via a postinstall script. It is a
+# build-time dependency only: it bundles the action entry point into dist/, and
+# nothing it produces runs on a consumer's runner.
+allowBuilds:
+  esbuild: true
