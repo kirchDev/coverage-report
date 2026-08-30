@@ -29,8 +29,8 @@ The scope exists because no existing action covers the combination — measured,
 
 Two decisions that were the design risk, both now settled and both worth understanding before changing anything near them:
 
-- **Base-coverage storage → an orphan `coverage` branch.** One commit per measured push, the summary keyed by branch, written through the Git Data API (the only one that can create a parentless commit). The alternatives were the last successful run's artifact — which expires, and which a re-run of an old workflow resurrects — and recomputing the base on every pull request, which is always correct and doubles CI time. The reasoning is in `src/github/base-state.js`.
-- **Diff → line-hit mapping.** The fiddly core, in `src/diff.js`: only the new side of a hunk counts, context lines are not the patch, a rename is followed under its new name, and `\ No newline at end of file` never advances the counter. Every one of those is a test in `test/diff.test.js`. Change it against the tests, never against judgement.
+- **Base-coverage storage → an orphan `coverage` branch.** One commit per measured push, the summary keyed by branch, written through the Git Data API (the only one that can create a parentless commit). The alternatives were the last successful run's artifact — which expires, and which a re-run of an old workflow resurrects — and recomputing the base on every pull request, which is always correct and doubles CI time. The reasoning is in `src/github/base-state.ts`.
+- **Diff → line-hit mapping.** The fiddly core, in `src/diff.ts`: only the new side of a hunk counts, context lines are not the patch, a rename is followed under its new name, and `\ No newline at end of file` never advances the counter. Every one of those is a test in `test/diff.test.ts`. Change it against the tests, never against judgement.
 
 ## Commands
 
@@ -38,8 +38,9 @@ Two decisions that were the design risk, both now settled and both worth underst
 | :------------------ | :---------------------------------------------------------- |
 | `pnpm install`      | Install deps and wire husky hooks via the `prepare` script  |
 | `pnpm test`         | `node --test` — the suite, no test framework                |
+| `pnpm check:types`  | `tsc --noEmit` — the only thing that checks the types       |
 | `pnpm test:coverage`| The suite with coverage, into `coverage/lcov.info`          |
-| `pnpm build`        | Bundle `src/action-entry.js` into the committed `dist/`     |
+| `pnpm build`        | Bundle `src/action-entry.ts` into the committed `dist/`     |
 | `pnpm check:dist`   | Prove `dist/` is what `src/` currently builds               |
 | `pnpm lint`         | `oxlint . --deny-warnings`                                  |
 | `pnpm format`       | `oxfmt --check .` (note: `format` is the check, not fix)    |
@@ -56,13 +57,15 @@ Two decisions that were the design risk, both now settled and both worth underst
 
 ## Architecture / conventions
 
-- **Layout.** `src/parsers/` (one file per format plus a shared tag scanner), `src/coverage.js` (the one report shape everything speaks), `src/diff.js` (unified diff → changed lines), `src/patch.js`, `src/render.js`, `src/pipeline.js` (the whole job in one function, driven by both entry points), `src/github/` (the four endpoints the Action touches), `src/action.js` + `src/action-entry.js`, `src/cli.js` + `bin/`.
-- **One runtime dependency, on purpose.** `citty`, for the CLI. No `@actions/core` (the five things it does are ~40 lines in `src/workflow.js`), no XML library (`src/parsers/xml.js` is a tag scanner, and Cobertura and Clover are flat attribute formats), no HTTP client (Node 24 ships `fetch`). Every byte in `dist/` is code a consumer runs on their runner with a token, so the bar for adding one is high.
+- **Layout.** `src/parsers/` (one file per format plus a shared tag scanner), `src/coverage.ts` (the one report shape everything speaks), `src/diff.ts` (unified diff → changed lines), `src/patch.ts`, `src/render.ts`, `src/pipeline.ts` (the whole job in one function, driven by both entry points), `src/github/` (the four endpoints the Action touches), `src/action.ts` + `src/action-entry.ts`, `src/cli.ts` + `bin/`.
+- **One runtime dependency, on purpose.** `citty`, for the CLI. No `@actions/core` (the five things it does are ~40 lines in `src/workflow.ts`), no XML library (`src/parsers/xml.ts` is a tag scanner, and Cobertura and Clover are flat attribute formats), no HTTP client (Node 24 ships `fetch`). Every byte in `dist/` is code a consumer runs on their runner with a token, so the bar for adding one is high.
 - **`dist/index.js` is committed and generated.** It is excluded from lint, format and lint-staged; editing it by hand breaks `pnpm check:dist`.
-- **Tests are `node:test`.** No Vitest: this repo has no bundler, no JSX and no watch-mode need that the built-in runner does not cover, and it is one fewer toolchain to keep current on a repo whose whole point is not depending on things.
+- **TypeScript, run by Node and checked by `tsc`.** Node 24 executes `.ts` by *erasing* types — it never checks them, so a type error runs happily. `pnpm check:types` is therefore the only thing standing between an annotation and a fiction, and it is part of `pnpm check`. `tsconfig.json` sets `erasableSyntaxOnly`, so syntax the runtime cannot strip (`enum`, `namespace`, parameter properties) fails the check instead of failing on someone's runner with `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`.
+- **Relative imports name the `.ts` file.** Node's ESM loader does not guess extensions, and `rewriteRelativeImportExtensions` keeps `tsc` happy about it. There is no build step for the CLI: `bin/coverage-report.js` imports `../src/cli.ts` and Node strips it on load.
+- **Tests are `node:test`.** No Vitest: this repo has no bundler, no JSX and no watch-mode need that the built-in runner does not cover, and it is one fewer toolchain to keep current on a repo whose whole point is not depending on things. `test/helpers.ts` holds the two things every test file wanted — `reportOf` and `present`.
 - **Node 24, pnpm 11.** Pinned via `.nvmrc`, `engines`, and `packageManager`. `pnpm-workspace.yaml` enforces `minimumReleaseAge=4320` (3-day cooldown), isolated node-linker. Don't loosen these without reason.
 - **oxc, not eslint/prettier.** Linting via `oxlint`, formatting via `oxfmt`. Configs live in `.oxlintrc.json` / `.oxfmtrc.json`. `oxlint` uses `unicorn` + `oxc` plugins; rules deliberately minimal.
-- **Husky hooks** (`.husky/pre-commit`, `.husky/commit-msg`) run `lint-staged` and `commitlint`. `lint-staged.config.js` excludes `README.md`, `CLAUDE.md`, and `AGENTS.md` (free-form prose), `pnpm-lock.yaml`, and `dist/` (generated). `oxlint --fix --deny-warnings` then `oxfmt` on JS; `oxfmt` only on JSON/YAML/MD.
+- **Husky hooks** (`.husky/pre-commit`, `.husky/commit-msg`) run `lint-staged` and `commitlint`. `lint-staged.config.js` excludes `README.md`, `CLAUDE.md`, and `AGENTS.md` (free-form prose), `pnpm-lock.yaml`, and `dist/` (generated). `oxlint --fix --deny-warnings` then `oxfmt` on JS/TS; `oxfmt` only on JSON/YAML/MD.
 - **Conventional Commits enforced** via `@commitlint/config-conventional`. Don't `--no-verify` unless explicitly asked.
 - **release-please is included** (unlike many templates that omit it). Files: `release-please-config.json`, `.release-please-manifest.json`, `.github/workflows/release-please.yml`. Config uses `release-type: node` (it bumps `package.json`), `include-v-in-tag: true`. This repo starts at `0.0.0` with an empty `CHANGELOG.md` — scaffold's history was deliberately not inherited.
 - **Workflows** use `actions/checkout@v6`, `actions/setup-node@v6`, `pnpm/action-setup@v6`, `github/codeql-action/{init,analyze}@v4`. Keep these pinned to major versions; Dependabot bumps them monthly.

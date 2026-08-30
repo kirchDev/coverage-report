@@ -101,6 +101,7 @@ This ships the first. The branch shares no history with the code, so it cannot b
 
 ```bash
 pnpm test           # node:test, no test framework to keep current
+pnpm check:types    # tsc --noEmit — Node runs TypeScript but never checks it
 pnpm test:coverage  # this repository measures itself with itself
 ```
 

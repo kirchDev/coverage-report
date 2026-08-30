@@ -30,13 +30,14 @@ pnpm install   # wires husky hooks
 
 ## Running the suite
 
-| Command             | What it does                                             |
-| :------------------ | :------------------------------------------------------- |
-| `pnpm lint`         | oxlint across the repo.                                  |
-| `pnpm format`       | oxfmt check across JS / JSON / YAML / MD.                |
-| `pnpm check:policy` | Proves the two agent policy files ban the same commands. |
-| `pnpm check`        | Runs `lint`, `format` and `check:policy` — the CI gate.  |
-| `pnpm check:fix`    | Auto-fix lint + format issues.                           |
+| Command             | What it does                                                      |
+| :------------------ | :---------------------------------------------------------------- |
+| `pnpm lint`         | oxlint across the repo.                                           |
+| `pnpm format`       | oxfmt check across JS / TS / JSON / YAML / MD.                    |
+| `pnpm check:types`  | `tsc --noEmit`. Node runs TypeScript but never checks it.         |
+| `pnpm check:policy` | Proves the two agent policy files ban the same commands.          |
+| `pnpm check`        | Runs lint, format, types, policy, bundle and tests — the CI gate. |
+| `pnpm check:fix`    | Auto-fix lint + format issues.                                    |
 
 The same commands run in CI — keep them green before you push.
 
@@ -56,7 +57,7 @@ The same commands run in CI — keep them green before you push.
 
 Husky runs the following on `git commit`:
 
-- **JS / JSON / YAML / MD** → `oxlint` + `oxfmt`
+- **JS / TS / JSON / YAML / MD** → `oxlint` + `oxfmt`
 
 If a hook fails, fix the issue and commit again. **Don't `--no-verify`** unless I explicitly ask.
 
