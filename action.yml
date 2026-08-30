@@ -1,0 +1,89 @@
+name: 'Coverage Report'
+description: 'Coverage reporting on pull requests — total, delta and patch coverage, straight from the reports your CI already writes.'
+author: 'Titus Kirch'
+
+branding:
+  icon: 'percent'
+  color: 'purple'
+
+inputs:
+  reports:
+    description: |
+      Coverage reports to read, one per line or comma-separated. Formats are
+      detected from the content, and several reports merge into one number —
+      that is the point of the input taking a list.
+    required: true
+  format:
+    description: 'Force a format (lcov, cobertura, clover, istanbul) instead of detecting it.'
+    required: false
+    default: ''
+  root:
+    description: 'Repository root that report paths are made relative to.'
+    required: false
+    default: ${{ github.workspace }}
+  name:
+    description: 'Names this report. Set it when a repository posts more than one, so each gets its own sticky comment.'
+    required: false
+    default: ''
+  github-token:
+    description: 'Token used to comment, write the check run and store the base state.'
+    required: false
+    default: ${{ github.token }}
+  comment:
+    description: 'Upsert the sticky comment on the pull request.'
+    required: false
+    default: 'true'
+  check-run:
+    description: 'Write a check run for branch protection to gate on.'
+    required: false
+    default: 'true'
+  check-name:
+    description: 'Name of the check run.'
+    required: false
+    default: 'Coverage'
+  base-branch:
+    description: |
+      Orphan branch holding the base state. Set to an empty string to switch the
+      base state off entirely — the delta then never appears.
+    required: false
+    default: 'coverage'
+  update-base:
+    description: |
+      When to record the base state: "auto" (on a push that is not a pull
+      request), "true" (always) or "false" (never).
+    required: false
+    default: 'auto'
+  min-total:
+    description: 'Fail the run when total line coverage is below this percentage.'
+    required: false
+    default: ''
+  min-patch:
+    description: 'Fail the run when patch coverage is below this percentage.'
+    required: false
+    default: ''
+  fail-on-threshold:
+    description: 'Fail the step when a threshold is missed. The check run reports the failure either way.'
+    required: false
+    default: 'true'
+  file-limit:
+    description: 'How many files to list in the comment.'
+    required: false
+    default: '20'
+
+outputs:
+  lines-pct:
+    description: 'Total line coverage as a percentage.'
+  patch-pct:
+    description: 'Patch coverage as a percentage; empty when there is no pull request.'
+  delta-pct:
+    description: 'Change in total line coverage against the base state; empty when there is no base.'
+  failed:
+    description: '"true" when a configured threshold was missed.'
+  comment-url:
+    description: 'URL of the sticky comment.'
+  markdown:
+    description: 'The rendered comment body.'
+
+runs:
+  using: 'node24'
+  main: 'dist/index.js'
