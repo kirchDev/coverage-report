@@ -2,7 +2,7 @@
 
 ## Scope
 
-`coverage-report` is a **CLI plus the GitHub Action that wraps it**. It parses coverage reports produced on the runner, maps a pull request's diff onto them, and writes a comment and a check run back to the repository. It runs inside CI with a repository token and never sends coverage data to a third-party service.
+`coverage-report` is a **CLI plus the GitHub Action that wraps it**. It parses coverage reports produced by your own CI, maps a pull request's diff onto them, and writes a comment and a check run back to the repository. It runs inside the workflow with a repository token, and coverage data never leaves it for a third-party service.
 
 The supported version is always the **latest release**. There are no maintained release branches to back-port fixes to; pin the Action to a major tag and update to the newest release when an advisory ships.
 

@@ -2,7 +2,7 @@
   "$schema": "https://www.schemastore.org/package.json",
   "name": "coverage-report",
   "version": "0.0.0",
-  "description": "Self-hosted coverage reporting on pull requests — total, delta and patch coverage from the reports CI already produces, with no third-party platform.",
+  "description": "Coverage reporting on pull requests, straight from the reports your CI already writes — no third-party service.",
   "keywords": [
     "clover",
     "cobertura",
