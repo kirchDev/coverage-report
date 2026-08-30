@@ -13,7 +13,7 @@ import { build } from 'esbuild';
  * `dist/` that drifts from `src/` fails CI rather than shipping.
  */
 const options = {
-  entryPoints: ['src/action-entry.js'],
+  entryPoints: ['src/action-entry.ts'],
   bundle: true,
   platform: 'node',
   target: 'node24',

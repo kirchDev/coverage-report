@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    // Node 24 runs TypeScript by erasing types, and erasing is all it does — a
+    // type error runs happily. `tsc --noEmit` is therefore the only thing that
+    // checks anything here; nothing emits, and no build step depends on it.
+    "noEmit": true,
+
+    // What Node's type stripping can actually load. `erasableSyntaxOnly` fails
+    // the check on `enum`, `namespace` and parameter properties, so a syntax the
+    // runtime would reject with ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX is caught at
+    // check time rather than on someone's runner.
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+
+    "target": "esnext",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "lib": ["esnext"],
+    "types": ["node"],
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "exactOptionalPropertyTypes": false,
+    "isolatedModules": true,
+    "skipLibCheck": true
+  },
+  "include": ["src", "test"]
+}
