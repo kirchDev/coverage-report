@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { appendFileSync } from 'node:fs';
 
 /**
@@ -34,7 +35,19 @@ export const core = {
   setOutput(name: string, value: string): void {
     const file = process.env.GITHUB_OUTPUT;
     if (!file) return;
-    const delimiter = `ghadelimiter_${name}_${Date.now()}`;
+
+    // The delimiter must be unguessable, and the value must not contain it.
+    // Outputs here carry file paths taken from the pull request, which a fork
+    // controls: a value holding a line equal to the delimiter would close the
+    // heredoc early and everything after it would be read by the runner as
+    // further outputs. A timestamp is guessable; a UUID is not.
+    const delimiter = `ghadelimiter_${randomUUID()}`;
+    if (name.includes(delimiter) || value.includes(delimiter)) {
+      throw new Error(
+        `Refusing to write output "${name}": it contains the delimiter.`
+      );
+    }
+
     appendFileSync(file, `${name}<<${delimiter}\n${value}\n${delimiter}\n`);
   },
 
