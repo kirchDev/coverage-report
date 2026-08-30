@@ -7,11 +7,12 @@
   "trailingComma": "none",
   "ignorePatterns": [
     "**/node_modules/**",
-    "dist/**",
+    "AGENTS.md",
     "CHANGELOG.md",
-    "pnpm-lock.yaml",
-    "README.md",
     "CLAUDE.md",
-    "AGENTS.md"
+    "README.md",
+    "dist/**",
+    "lib/**",
+    "pnpm-lock.yaml"
   ]
 }

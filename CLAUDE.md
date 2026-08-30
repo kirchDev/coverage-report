@@ -41,6 +41,7 @@ Two decisions that were the design risk, both now settled and both worth underst
 | `pnpm check:types`  | `tsc --noEmit` — the only thing that checks the types       |
 | `pnpm test:coverage`| The suite with coverage, into `coverage/lcov.info`          |
 | `pnpm build`        | Bundle `src/action-entry.ts` into the committed `dist/`     |
+| `pnpm build:npm`    | Compile `src/` to `lib/` for the npm package (runs on `prepack`) |
 | `pnpm check:dist`   | Prove `dist/` is what `src/` currently builds               |
 | `pnpm lint`         | `oxlint . --deny-warnings`                                  |
 | `pnpm format`       | `oxfmt --check .` (note: `format` is the check, not fix)    |
@@ -57,9 +58,10 @@ Two decisions that were the design risk, both now settled and both worth underst
 
 ## Architecture / conventions
 
-- **Layout.** `src/parsers/` (one file per format plus a shared tag scanner), `src/coverage.ts` (the one report shape everything speaks), `src/diff.ts` (unified diff → changed lines), `src/patch.ts`, `src/render.ts`, `src/pipeline.ts` (the whole job in one function, driven by both entry points), `src/github/` (the four endpoints the Action touches), `src/action.ts` + `src/action-entry.ts`, `src/cli.ts` + `bin/`.
+- **Layout.** `src/parsers/` (one file per format plus a shared tag scanner), `src/coverage.ts` (the one report shape everything speaks), `src/diff.ts` (unified diff → changed lines), `src/patch.ts`, `src/render.ts`, `src/pipeline.ts` (the whole job in one function, driven by both entry points), `src/github/` (the four endpoints the Action touches), `src/action.ts` + `src/action-entry.ts`, `src/cli.ts` + `src/bin.ts`.
 - **One runtime dependency, on purpose.** `citty`, for the CLI. No `@actions/core` (the five things it does are ~40 lines in `src/workflow.ts`), no XML library (`src/parsers/xml.ts` is a tag scanner, and Cobertura and Clover are flat attribute formats), no HTTP client (Node 24 ships `fetch`). Every byte in `dist/` is code a consumer runs on their runner with a token, so the bar for adding one is high.
 - **`dist/index.js` is committed and generated.** It is excluded from lint, format and lint-staged; editing it by hand breaks `pnpm check:dist`.
+- **Two builds, for two consumers that cannot share one.** `dist/index.js` is the bundle the Action runs from a checkout with no `node_modules`; `lib/` is the compiled npm package, gitignored and rebuilt on `prepack`. The package **cannot** ship the `.ts` sources: Node refuses to strip types under `node_modules` (`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`), so an `exports` pointing at a `.ts` file is broken on the consumer's first import — verified by packing and installing, not by reading. `rewriteRelativeImportExtensions` is what lets one spelling (`./cli.ts`) serve both the direct run and the emit.
 - **TypeScript, run by Node and checked by `tsc`.** Node 24 executes `.ts` by *erasing* types — it never checks them, so a type error runs happily. `pnpm check:types` is therefore the only thing standing between an annotation and a fiction, and it is part of `pnpm check`. `tsconfig.json` sets `erasableSyntaxOnly`, so syntax the runtime cannot strip (`enum`, `namespace`, parameter properties) fails the check instead of failing on someone's runner with `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`.
 - **Relative imports name the `.ts` file.** Node's ESM loader does not guess extensions, and `rewriteRelativeImportExtensions` keeps `tsc` happy about it. There is no build step for the CLI: `bin/coverage-report.js` imports `../src/cli.ts` and Node strips it on load.
 - **Tests are `node:test`.** No Vitest: this repo has no bundler, no JSX and no watch-mode need that the built-in runner does not cover, and it is one fewer toolchain to keep current on a repo whose whole point is not depending on things. `test/helpers.ts` holds the two things every test file wanted — `reportOf` and `present`.

@@ -8,7 +8,12 @@
     "no-unused-vars": "warn",
     "unicorn/no-empty-file": "off"
   },
-  "ignorePatterns": ["**/node_modules/**", "dist/**", "pnpm-lock.yaml"],
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "dist/**",
+    "lib/**",
+    "pnpm-lock.yaml"
+  ],
   "env": {
     "builtin": true,
     "node": true

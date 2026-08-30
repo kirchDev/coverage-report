@@ -5,3 +5,4 @@ node_modules
 !.vscode/extensions.json
 .claude/settings.local.json
 coverage
+lib
