@@ -1,0 +1,38 @@
+# When one number is the wrong answer.
+#
+# A monorepo whose halves have genuinely different standards — a mature backend
+# at 95% next to a young frontend at 40% — is badly served by a single figure:
+# the average hides both. Two named reports post two comments and two check runs,
+# each with its own threshold and its own base state.
+name: coverage
+
+on:
+  pull_request:
+  push:
+    branches: [dev, main]
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: write
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      # … build and test steps omitted …
+
+      - uses: kirchDev/coverage-report@v1
+        with:
+          name: backend
+          check-name: Coverage (backend)
+          reports: services/core/coverage.xml
+          min-total: '90'
+
+      - uses: kirchDev/coverage-report@v1
+        with:
+          name: frontend
+          check-name: Coverage (frontend)
+          reports: apps/web/coverage/lcov.info
+          min-total: '40'

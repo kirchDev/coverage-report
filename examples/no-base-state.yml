@@ -1,0 +1,27 @@
+# Reporting without writing anything back to the repository.
+#
+# `base-branch: ''` switches the base state off: no `coverage` branch is created
+# and `contents: write` is not needed. The comment still carries the total and
+# patch coverage — only the "how did this move" column goes away, because there
+# is nothing to compare against.
+name: coverage
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      # … build and test steps omitted …
+
+      - uses: kirchDev/coverage-report@v1
+        with:
+          reports: coverage/lcov.info
+          base-branch: ''

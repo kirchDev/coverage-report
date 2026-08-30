@@ -1,0 +1,70 @@
+# A repository with Vitest and Pest in it: two suites, two formats, one number.
+#
+# This is the case that has no off-the-shelf answer. The two suites run in
+# parallel jobs and hand their reports to a third, because a coverage total that
+# is only correct when both suites happen to run in the same job is a total that
+# will eventually be wrong quietly.
+name: coverage
+
+on:
+  pull_request:
+  push:
+    branches: [dev, main]
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: write
+
+jobs:
+  javascript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm vitest run --coverage --coverage.reporter=lcov
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-js
+          path: coverage/lcov.info
+
+  php:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: pcov
+      - run: composer install --no-interaction --prefer-dist
+      # Pest's test-impact analysis replays cached results, and a replayed test
+      # executes nothing — the run then reports 0% with no error anywhere. Any
+      # repository using `pest()->tia()` has to opt out for the coverage run.
+      - run: vendor/bin/pest --no-tia --coverage-clover=coverage.xml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-php
+          path: coverage.xml
+
+  report:
+    needs: [javascript, php]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v4
+        with:
+          path: reports
+          merge-multiple: true
+
+      - uses: kirchDev/coverage-report@v1
+        with:
+          reports: |
+            reports/lcov.info
+            reports/coverage.xml
+          min-total: '80'
+          min-patch: '85'
