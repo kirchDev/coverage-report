@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/kirchDev/coverage-report/compare/v0.1.0...v0.2.0) (2026-08-30)
+
+
+### Features
+
+* publish the CLI as @kirchdev/coverage-report ([d1b1d4f](https://github.com/kirchDev/coverage-report/commit/d1b1d4fd15c0d2d455eda9f3cd292b3554e15f03))
+
 ## 0.1.0 (2026-08-30)
 
 
