@@ -30,7 +30,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm vitest run --coverage --coverage.reporter=lcov
 
-      - uses: kirchDev/coverage-report@v1
+      - uses: kirchDev/coverage-report@v0.1.0
         with:
           reports: coverage/lcov.info
           min-patch: '80'

@@ -61,7 +61,7 @@ jobs:
           path: reports
           merge-multiple: true
 
-      - uses: kirchDev/coverage-report@v1
+      - uses: kirchDev/coverage-report@v0.1.0
         with:
           reports: |
             reports/lcov.info

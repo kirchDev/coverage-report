@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v6
       # … build and test steps omitted …
 
-      - uses: kirchDev/coverage-report@v1
+      - uses: kirchDev/coverage-report@v0.1.0
         with:
           reports: coverage/lcov.info
           base-branch: ''

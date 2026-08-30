@@ -12,7 +12,7 @@
 ---
 
 ```yaml
-- uses: kirchDev/coverage-report@v1
+- uses: kirchDev/coverage-report@v0.1.0
   with:
     reports: |
       coverage/lcov.info   # Vitest
@@ -39,13 +39,13 @@ permissions:
 steps:
   - uses: actions/checkout@v6
   - run: pnpm vitest run --coverage --coverage.reporter=lcov
-  - uses: kirchDev/coverage-report@v1
+  - uses: kirchDev/coverage-report@v0.1.0
     with:
       reports: coverage/lcov.info
 ```
 
 > [!IMPORTANT]
-> No release is tagged yet, so `@v1` does not resolve. Until the first release, pin `@main`.
+> `v0.1.0` is not tagged yet — pin `@main` until it is. There is no floating `@v0` or `@v1` tag and there will not be one: a 0.x minor is allowed to break, so a tag that follows it would promise more than the version does.
 
 The same run locally — the CLI is the Action without its GitHub half, which is what makes a disagreement between a local check and a pull-request comment debuggable:
 
