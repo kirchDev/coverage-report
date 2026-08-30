@@ -15,7 +15,12 @@
  */
 
 const NAME = /[A-Za-z_][\w.:-]*/y;
-const ATTRIBUTE = /\s*([\w.:-]+)\s*=\s*("([^"]*)"|'([^']*)')/y;
+// `(?=(...))\1` is the JavaScript spelling of an atomic group: the name is
+// captured by a lookahead and then consumed by the backreference, so it can
+// never give characters back. Without it, a long run of name characters with no
+// `=` after it backtracks once per character — quadratic on input that a fork's
+// branch names can reach into.
+const ATTRIBUTE = /\s*(?=([\w.:-]+))\1\s*=\s*("([^"]*)"|'([^']*)')/y;
 
 export interface Tag {
   name: string;

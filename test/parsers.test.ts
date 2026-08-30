@@ -9,6 +9,7 @@ import {
   type ParseOptions,
   type ParseResult
 } from '../src/parsers/index.ts';
+import { scanTags } from '../src/parsers/xml.ts';
 import { present } from './helpers.ts';
 
 const FIXTURES = join(import.meta.dirname, 'fixtures');
@@ -166,6 +167,29 @@ describe('istanbul', () => {
     // Read leniently this file yields zero lines, and zero of zero is 100% — a
     // run that measures nothing and goes green is the worst answer available.
     assert.throws(() => parse('sample.summary.json'), /coverage-summary\.json/);
+  });
+});
+
+describe('the tag scanner', () => {
+  it('reads attributes in both quote styles and decodes entities', () => {
+    const [tag] = [...scanTags(`<class filename="a&amp;b.js" name='x'/>`)];
+    assert.deepEqual(present(tag, 'tag').attributes, {
+      filename: 'a&b.js',
+      name: 'x'
+    });
+  });
+
+  it('does not backtrack over a long run of name characters', () => {
+    // The attribute pattern uses an atomic group, so a name-like run with no
+    // `=` after it fails once instead of once per character. A fork's branch
+    // names reach into a coverage report, so the input is not ours to trust.
+    const hostile = `<class ${'-'.repeat(50_000)}>`;
+    const started = process.hrtime.bigint();
+    const tags = [...scanTags(hostile)];
+    const elapsed = Number(process.hrtime.bigint() - started) / 1e6;
+
+    assert.equal(present(tags[0], 'tag').name, 'class');
+    assert.ok(elapsed < 250, `scanning took ${elapsed.toFixed(1)}ms`);
   });
 });
 
