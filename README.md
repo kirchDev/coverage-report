@@ -50,7 +50,7 @@ steps:
 The same run locally — the CLI is the Action without its GitHub half, which is what makes a disagreement between a local check and a pull-request comment debuggable:
 
 ```bash
-coverage-report report --report coverage/lcov.info,coverage.xml \
+coverage-report render coverage/lcov.info coverage.xml \
   --diff <(git diff origin/dev...HEAD) --min-patch 80
 ```
 

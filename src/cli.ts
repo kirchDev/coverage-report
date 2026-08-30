@@ -28,9 +28,9 @@ const sharedArgs = {
   }
 } satisfies ArgsDef;
 
-const report = defineCommand({
+const render = defineCommand({
   meta: {
-    name: 'report',
+    name: 'render',
     description: 'Render the coverage comment for a pull request.'
   },
   args: {
@@ -172,7 +172,7 @@ export const main = defineCommand({
     name: 'coverage-report',
     description: 'Self-hosted coverage reporting for pull requests.'
   },
-  subCommands: { report, merge, detect }
+  subCommands: { render, merge, detect }
 });
 
 /**

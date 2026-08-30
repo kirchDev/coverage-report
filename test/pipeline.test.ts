@@ -97,7 +97,7 @@ describe('the command line', () => {
 
   it('takes several reports as one comma-separated value', () => {
     const output = cli([
-      'report',
+      'render',
       '--root',
       '/build/workspace',
       '--report',
@@ -107,7 +107,7 @@ describe('the command line', () => {
   });
 
   it('takes several reports as positional arguments', () => {
-    const output = cli(['report', '--root', '/build/workspace', ...REPORTS]);
+    const output = cli(['render', '--root', '/build/workspace', ...REPORTS]);
     assert.match(output, /5 \/ 8/);
   });
 
@@ -116,7 +116,7 @@ describe('the command line', () => {
     // looks entirely healthy about it.
     assert.throws(
       () =>
-        cli(['report', '--report', FIRST_REPORT, '--report', SECOND_REPORT]),
+        cli(['render', '--report', FIRST_REPORT, '--report', SECOND_REPORT]),
       /comma-separated/
     );
   });
@@ -125,7 +125,7 @@ describe('the command line', () => {
     assert.throws(
       () =>
         cli([
-          'report',
+          'render',
           '--root',
           '/build/workspace',
           '--report',
@@ -139,7 +139,7 @@ describe('the command line', () => {
 
   it('exits zero when the thresholds are met', () => {
     const output = cli([
-      'report',
+      'render',
       '--root',
       '/build/workspace',
       '--report',
