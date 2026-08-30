@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { readContext, readInputs, run } from '../src/action.ts';
@@ -359,6 +361,31 @@ describe('a pull-request run', () => {
 
     assert.equal(find(github.calls, 'POST', '/issues/42/comments').length, 0);
     assert.equal(find(github.calls, 'POST', '/check-runs').length, 1);
+  });
+});
+
+describe('the outputs', () => {
+  it('writes no free-form body into GITHUB_OUTPUT', async () => {
+    // GITHUB_OUTPUT is parsed by the runner. The comment body carries file
+    // paths a fork controls, so it is delivered as a comment and a check run
+    // and never as an output; the numbers and the validated URL are all that
+    // reach the file.
+    const directory = mkdtempSync(join(tmpdir(), 'coverage-report-outputs-'));
+    const outputFile = join(directory, 'output');
+    process.env.GITHUB_OUTPUT = outputFile;
+
+    try {
+      const github = fakeGitHub();
+      await run(PULL_REQUEST_ENV, { fetchImpl: github.fetchImpl });
+      const written = readFileSync(outputFile, 'utf8');
+
+      assert.doesNotMatch(written, /^markdown<</m);
+      assert.match(written, /^lines-pct<</m);
+      assert.match(written, /^comment-url<</m);
+    } finally {
+      delete process.env.GITHUB_OUTPUT;
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 });
 

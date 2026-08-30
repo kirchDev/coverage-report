@@ -1134,7 +1134,7 @@ async function run(env = process.env, { fetchImpl } = {}) {
       name: input2.name
     });
     core.info(`Comment ${result.action}: ${result.url}`);
-    core.setOutput("comment-url", result.url ?? "");
+    core.setOutput("comment-url", safeUrl(result.url));
   } else if (input2.comment) {
     core.info("No pull request in context \u2014 skipping the comment.");
   }
@@ -1173,13 +1173,15 @@ async function run(env = process.env, { fetchImpl } = {}) {
     delta?.metrics?.lines ? String(delta.metrics.lines.pct) : ""
   );
   core.setOutput("failed", String(failures.length > 0));
-  core.setOutput("markdown", markdown);
   if (failures.length > 0) {
     for (const failure of failures)
       core.error(`Coverage threshold not met: ${failure}`);
     if (input2.failOnThreshold) core.fail(failures.join("; "));
   }
   return { totals, patch, delta, failures, markdown };
+}
+function safeUrl(value) {
+  return typeof value === "string" && /^https:\/\/[\w.-]+\/[\w./#-]*$/.test(value) ? value : "";
 }
 async function changedLines(client, {
   owner,

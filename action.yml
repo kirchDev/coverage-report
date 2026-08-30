@@ -81,8 +81,6 @@ outputs:
     description: '"true" when a configured threshold was missed.'
   comment-url:
     description: 'URL of the sticky comment.'
-  markdown:
-    description: 'The rendered comment body.'
 
 runs:
   using: 'node24'
