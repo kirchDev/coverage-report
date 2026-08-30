@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-01T00:00:00.000Z",
+  "sha": "basesha1",
+  "ref": "dev",
+  "totals": {
+    "lines": { "covered": 2, "total": 8, "pct": 25 },
+    "branches": { "covered": 0, "total": 2, "pct": 0 },
+    "functions": { "covered": 0, "total": 3, "pct": 0 },
+    "files": 2
+  },
+  "files": {}
+}

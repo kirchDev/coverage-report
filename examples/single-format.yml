@@ -1,0 +1,36 @@
+# The smallest thing that works: one suite, one report, a comment and a check run.
+#
+# `pull_request` (not `pull_request_target`) is deliberate — the action needs the
+# workspace's own coverage files, and a fork's code must never run with a token
+# that can write to the base repository.
+name: coverage
+
+on:
+  pull_request:
+  push:
+    branches: [dev, main]
+
+permissions:
+  contents: write # only for the coverage branch that holds the base state
+  pull-requests: write # the sticky comment
+  checks: write # the check run
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm vitest run --coverage --coverage.reporter=lcov
+
+      - uses: kirchDev/coverage-report@v0.1.0
+        with:
+          reports: coverage/lcov.info
+          min-patch: '80'

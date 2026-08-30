@@ -1,0 +1,10 @@
+{
+  "action": "synchronize",
+  "number": 42,
+  "pull_request": {
+    "number": 42,
+    "head": { "sha": "headsha0000000000000000000000000000000" },
+    "base": { "ref": "dev" }
+  },
+  "repository": { "name": "app", "owner": { "login": "kirchDev" } }
+}

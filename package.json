@@ -1,55 +1,83 @@
 {
   "$schema": "https://www.schemastore.org/package.json",
-  "name": "scaffold",
-  "version": "0.3.0",
-  "description": "Language-agnostic baseline template for new kirchDev repositories.",
+  "name": "coverage-report",
+  "version": "0.0.0",
+  "description": "Coverage reporting on pull requests, straight from the reports your CI already writes — no third-party service.",
   "keywords": [
-    "commitlint",
-    "conventional-commits",
-    "dependabot",
-    "github-template",
-    "husky",
+    "clover",
+    "cobertura",
+    "code-coverage",
+    "coverage",
+    "coverage-report",
+    "github-action",
+    "istanbul",
     "kirchdev",
+    "lcov",
+    "monorepo",
     "nodejs",
-    "oxfmt",
-    "oxlint",
-    "pnpm",
-    "release-please",
-    "scaffold",
-    "template"
+    "patch-coverage",
+    "pest",
+    "phpunit",
+    "pull-request",
+    "vitest"
   ],
-  "homepage": "https://github.com/TitusKirch/scaffold#readme",
+  "homepage": "https://github.com/kirchDev/coverage-report#readme",
   "bugs": {
-    "url": "https://github.com/TitusKirch/scaffold/issues"
+    "url": "https://github.com/kirchDev/coverage-report/issues"
   },
   "license": "MIT",
   "author": "Titus Kirch <titus.kirch@kirch.dev>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/TitusKirch/scaffold.git"
+    "url": "git+https://github.com/kirchDev/coverage-report.git"
   },
+  "bin": {
+    "coverage-report": "./bin/coverage-report.js"
+  },
+  "files": [
+    "action.yml",
+    "bin",
+    "dist",
+    "src"
+  ],
   "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./package.json": "./package.json"
+  },
   "scripts": {
-    "lint": "oxlint . --deny-warnings",
-    "lint:fix": "oxlint . --fix --deny-warnings",
-    "format": "oxfmt --check .",
-    "format:fix": "oxfmt .",
-    "check": "pnpm lint && pnpm format && pnpm check:policy",
+    "build": "node scripts/build.js",
+    "check": "pnpm lint && pnpm format && pnpm check:types && pnpm check:policy && pnpm check:dist && pnpm test",
+    "check:dist": "node scripts/check-dist.js",
     "check:fix": "pnpm lint:fix && pnpm format:fix",
     "check:policy": "node scripts/check-policy-parity.js",
+    "check:types": "tsc --noEmit",
+    "format": "oxfmt --check .",
+    "format:fix": "oxfmt .",
+    "lint": "oxlint . --deny-warnings",
+    "lint:fix": "oxlint . --fix --deny-warnings",
+    "prepare": "husky",
     "skills:update": "pnpm dlx skills@latest update -p -y",
     "taze": "taze",
     "taze:w": "taze -w",
-    "prepare": "husky"
+    "test": "node --test 'test/**/*.test.ts'",
+    "test:coverage": "node -e \"require('node:fs').mkdirSync('coverage',{recursive:true})\" && node --test --experimental-test-coverage --test-coverage-exclude='test/**' --test-reporter=lcov --test-reporter-destination=coverage/lcov.info --test-reporter=spec --test-reporter-destination=stdout 'test/**/*.test.ts'",
+    "test:watch": "node --test --watch 'test/**/*.test.ts'"
+  },
+  "dependencies": {
+    "citty": "^0.2.2"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.1",
     "@commitlint/config-conventional": "^21.2.0",
+    "@types/node": "^26.4.0",
+    "esbuild": "^0.28.2",
     "husky": "^9.1.7",
     "lint-staged": "^17.3.0",
     "oxfmt": "0.61.0",
     "oxlint": "1.76.0",
-    "taze": "^19.16.0"
+    "taze": "^19.16.0",
+    "typescript": "^7.0.2"
   },
   "engines": {
     "node": ">=24"

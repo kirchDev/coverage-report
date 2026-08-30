@@ -1,0 +1,6 @@
+{
+  "total": { "lines": { "total": 4, "covered": 2, "skipped": 0, "pct": 50 } },
+  "/build/workspace/src/calculator.js": {
+    "lines": { "total": 4, "covered": 2, "skipped": 0, "pct": 50 }
+  }
+}
