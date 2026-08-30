@@ -24,15 +24,26 @@
  * one that can create a branch with no parent — and using it for both create and
  * update keeps one code path instead of two.
  */
+import type { Summary } from '../coverage.ts';
+import type { GitHubClient } from './api.ts';
+
 const MODE_FILE = '100644';
 
-export function baseStatePath(ref, name = '') {
+export function baseStatePath(ref: string, name = ''): string {
   const branch = String(ref).replace(/^refs\/heads\//, '');
   const slug = branch.replaceAll('/', '-').replace(/[^\w.-]/g, '_');
   return name ? `${slug}.${slugify(name)}.json` : `${slug}.json`;
 }
 
-export async function readBaseState(client, { owner, repo, branch, path }) {
+export async function readBaseState(
+  client: GitHubClient,
+  {
+    owner,
+    repo,
+    branch,
+    path
+  }: { owner: string; repo: string; branch: string; path: string }
+): Promise<Summary | null> {
   const response = await client.get(
     `/repos/${owner}/${repo}/contents/${encodePath(path)}?ref=${encodeURIComponent(branch)}`,
     { allow404: true }
@@ -53,10 +64,19 @@ export async function readBaseState(client, { owner, repo, branch, path }) {
   }
 }
 
+export interface WriteBaseStateOptions {
+  owner: string;
+  repo: string;
+  branch: string;
+  path: string;
+  summary: Summary;
+  message: string;
+}
+
 export async function writeBaseState(
-  client,
-  { owner, repo, branch, path, summary, message }
-) {
+  client: GitHubClient,
+  { owner, repo, branch, path, summary, message }: WriteBaseStateOptions
+): Promise<{ commit: string; path: string; branch: string }> {
   const head = await client.get(
     `/repos/${owner}/${repo}/git/ref/heads/${encodeURIComponent(branch)}`,
     { allow404: true }
@@ -100,18 +120,21 @@ export async function writeBaseState(
   return { commit: commit.sha, path, branch };
 }
 
-async function treeOf(client, { owner, repo, commit }) {
+async function treeOf(
+  client: GitHubClient,
+  { owner, repo, commit }: { owner: string; repo: string; commit: string }
+): Promise<string> {
   const data = await client.get(
     `/repos/${owner}/${repo}/git/commits/${commit}`
   );
   return data.tree.sha;
 }
 
-function encodePath(path) {
+function encodePath(path: string): string {
   return path.split('/').map(encodeURIComponent).join('/');
 }
 
-function slugify(value) {
+function slugify(value: string): string {
   return String(value)
     .toLowerCase()
     .replace(/[^\w.-]+/g, '-')

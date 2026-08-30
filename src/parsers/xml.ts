@@ -17,7 +17,14 @@
 const NAME = /[A-Za-z_][\w.:-]*/y;
 const ATTRIBUTE = /\s*([\w.:-]+)\s*=\s*("([^"]*)"|'([^']*)')/y;
 
-export function* scanTags(xml) {
+export interface Tag {
+  name: string;
+  attributes: Record<string, string>;
+  closing: boolean;
+  selfClosing: boolean;
+}
+
+export function* scanTags(xml: string): Generator<Tag> {
   let index = 0;
 
   while (index < xml.length) {
@@ -50,13 +57,15 @@ export function* scanTags(xml) {
     }
 
     let cursor = NAME.lastIndex;
-    const attributes = {};
+    const attributes: Record<string, string> = {};
 
     while (cursor < xml.length) {
       ATTRIBUTE.lastIndex = cursor;
       const attribute = ATTRIBUTE.exec(xml);
       if (!attribute) break;
-      attributes[attribute[1]] = decode(attribute[3] ?? attribute[4] ?? '');
+      attributes[attribute[1] as string] = decode(
+        attribute[3] ?? attribute[4] ?? ''
+      );
       cursor = ATTRIBUTE.lastIndex;
     }
 
@@ -74,12 +83,12 @@ export function* scanTags(xml) {
   }
 }
 
-function skipTo(xml, from, terminator) {
+function skipTo(xml: string, from: number, terminator: string): number {
   const end = xml.indexOf(terminator, from);
   return end === -1 ? xml.length : end + terminator.length;
 }
 
-const ENTITIES = {
+const ENTITIES: Record<string, string> = {
   '&amp;': '&',
   '&lt;': '<',
   '&gt;': '>',
@@ -87,12 +96,13 @@ const ENTITIES = {
   '&apos;': "'"
 };
 
-function decode(value) {
+function decode(value: string): string {
   if (!value.includes('&')) return value;
   return value.replace(
     /&(?:amp|lt|gt|quot|apos|#\d+|#x[\da-fA-F]+);/g,
-    (entity) => {
-      if (entity in ENTITIES) return ENTITIES[entity];
+    (entity: string) => {
+      const named = ENTITIES[entity];
+      if (named !== undefined) return named;
       const codePoint = entity.startsWith('&#x')
         ? Number.parseInt(entity.slice(3, -1), 16)
         : Number.parseInt(entity.slice(2, -1), 10);

@@ -18,11 +18,62 @@
  * load-bearing on its own.
  */
 
-export function createReport() {
+/** Hit counts keyed by whatever identifies one unit of a metric. */
+export type HitMap<Key> = Map<Key, number>;
+
+export interface FileCoverage {
+  path: string;
+  lines: HitMap<number>;
+  branches: HitMap<string>;
+  functions: HitMap<string>;
+}
+
+export interface Report {
+  files: Map<string, FileCoverage>;
+}
+
+export interface MetricTotals {
+  covered: number;
+  total: number;
+  pct: number;
+}
+
+export interface FileTotals {
+  path: string;
+  lines: MetricTotals;
+  branches: MetricTotals;
+  functions: MetricTotals;
+}
+
+export interface ReportTotals {
+  lines: MetricTotals;
+  branches: MetricTotals;
+  functions: MetricTotals;
+  files: number;
+}
+
+/** The compact form written to the base state and read back on the next run. */
+export interface Summary {
+  schemaVersion: 1;
+  generatedAt: string;
+  sha: string | null;
+  ref: string | null;
+  totals: ReportTotals;
+  files: Record<
+    string,
+    {
+      lines: [number, number];
+      branches: [number, number];
+      functions: [number, number];
+    }
+  >;
+}
+
+export function createReport(): Report {
   return { files: new Map() };
 }
 
-export function fileOf(report, path) {
+export function fileOf(report: Report, path: string): FileCoverage {
   let file = report.files.get(path);
   if (!file) {
     file = {
@@ -36,7 +87,11 @@ export function fileOf(report, path) {
   return file;
 }
 
-export function recordHits(map, key, hits) {
+export function recordHits<Key>(
+  map: HitMap<Key>,
+  key: Key,
+  hits: unknown
+): void {
   map.set(key, (map.get(key) ?? 0) + Math.max(0, toCount(hits)));
 }
 
@@ -45,29 +100,33 @@ export function recordHits(map, key, hits) {
  * coverage at all would report `0/0 = 100%`, which is the most dangerous wrong
  * answer this tool could give.
  */
-export function recordKey(map, key) {
+export function recordKey<Key>(map: HitMap<Key>, key: Key): void {
   if (!map.has(key)) map.set(key, 0);
 }
 
-export function mergeReports(reports) {
+export function mergeReports(reports: Report[]): Report {
   const merged = createReport();
 
   for (const report of reports) {
     for (const [path, file] of report.files) {
       const target = fileOf(merged, path);
-      for (const metric of ['lines', 'branches', 'functions']) {
-        for (const [key, hits] of file[metric]) {
-          recordKey(target[metric], key);
-          if (hits > 0) recordHits(target[metric], key, hits);
-        }
-      }
+      mergeInto(target.lines, file.lines);
+      mergeInto(target.branches, file.branches);
+      mergeInto(target.functions, file.functions);
     }
   }
 
   return merged;
 }
 
-export function metricTotals(map) {
+function mergeInto<Key>(target: HitMap<Key>, source: HitMap<Key>): void {
+  for (const [key, hits] of source) {
+    recordKey(target, key);
+    if (hits > 0) recordHits(target, key, hits);
+  }
+}
+
+export function metricTotals<Key>(map: HitMap<Key>): MetricTotals {
   let covered = 0;
   for (const hits of map.values()) {
     if (hits > 0) covered += 1;
@@ -75,7 +134,7 @@ export function metricTotals(map) {
   return { covered, total: map.size, pct: percentage(covered, map.size) };
 }
 
-export function fileTotals(file) {
+export function fileTotals(file: FileCoverage): FileTotals {
   return {
     path: file.path,
     lines: metricTotals(file.lines),
@@ -84,8 +143,8 @@ export function fileTotals(file) {
   };
 }
 
-export function reportTotals(report) {
-  const totals = {
+export function reportTotals(report: Report): ReportTotals {
+  const totals: ReportTotals = {
     lines: { covered: 0, total: 0, pct: 0 },
     branches: { covered: 0, total: 0, pct: 0 },
     functions: { covered: 0, total: 0, pct: 0 },
@@ -93,45 +152,53 @@ export function reportTotals(report) {
   };
 
   for (const file of report.files.values()) {
-    for (const metric of ['lines', 'branches', 'functions']) {
-      const one = metricTotals(file[metric]);
-      totals[metric].covered += one.covered;
-      totals[metric].total += one.total;
-    }
+    accumulate(totals.lines, metricTotals(file.lines));
+    accumulate(totals.branches, metricTotals(file.branches));
+    accumulate(totals.functions, metricTotals(file.functions));
   }
 
-  for (const metric of ['lines', 'branches', 'functions']) {
-    totals[metric].pct = percentage(
-      totals[metric].covered,
-      totals[metric].total
-    );
-  }
+  totals.lines.pct = percentage(totals.lines.covered, totals.lines.total);
+  totals.branches.pct = percentage(
+    totals.branches.covered,
+    totals.branches.total
+  );
+  totals.functions.pct = percentage(
+    totals.functions.covered,
+    totals.functions.total
+  );
 
   return totals;
+}
+
+function accumulate(target: MetricTotals, one: MetricTotals): void {
+  target.covered += one.covered;
+  target.total += one.total;
 }
 
 /**
  * A file with nothing to measure is 100% covered, not 0%. The alternative drags
  * the repository total down every time an empty barrel file is added.
  */
-export function percentage(covered, total) {
+export function percentage(covered: number, total: number): number {
   if (total === 0) return 100;
   return round((covered / total) * 100);
 }
 
-export function round(value, places = 2) {
+export function round(value: number, places = 2): number {
   const factor = 10 ** places;
   return Math.round(value * factor) / factor;
 }
 
-function toCount(value) {
+function toCount(value: unknown): number {
   const count = Number(value);
   return Number.isFinite(count) ? count : 0;
 }
 
-/** The compact form written to the base state and read back on the next run. */
-export function toSummary(report, { sha = null, ref = null } = {}) {
-  const files = {};
+export function toSummary(
+  report: Report,
+  { sha = null, ref = null }: { sha?: string | null; ref?: string | null } = {}
+): Summary {
+  const files: Summary['files'] = {};
   for (const file of report.files.values()) {
     const totals = fileTotals(file);
     files[file.path] = {

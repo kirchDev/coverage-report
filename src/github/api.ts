@@ -7,9 +7,56 @@
  * in a client library would add more code to the bundle than it removes, and
  * every byte in `dist/` is code a consumer runs on their runner with a token.
  */
+/** Just enough of `fetch` to be stubbed in a test without pulling in a server. */
+export type FetchLike = (
+  url: string,
+  init: {
+    method: string;
+    headers: Record<string, string>;
+    body?: string | undefined;
+  }
+) => Promise<FetchResponse>;
+
+export interface FetchResponse {
+  ok: boolean;
+  status: number;
+  statusText: string;
+  text: () => Promise<string>;
+}
+
+export interface ClientOptions {
+  token: string | undefined;
+  baseUrl?: string;
+  fetchImpl?: FetchLike | undefined;
+  retries?: number;
+  wait?: (ms: number) => Promise<void>;
+}
+
+export interface RequestOptions {
+  body?: unknown;
+  /** Return null instead of throwing — a missing base state is not an error. */
+  allow404?: boolean;
+}
+
+export interface GitHubClient {
+  get: (path: string, options?: RequestOptions) => Promise<any>;
+  post: (path: string, body?: unknown) => Promise<any>;
+  patch: (path: string, body?: unknown) => Promise<any>;
+  put: (path: string, body?: unknown) => Promise<any>;
+}
+
 export class GitHubError extends Error {
-  constructor(response, body, method, url) {
-    const message = body?.message ?? response.statusText;
+  readonly status: number;
+  readonly body: unknown;
+
+  constructor(
+    response: FetchResponse,
+    body: unknown,
+    method: string,
+    url: string
+  ) {
+    const message =
+      (body as { message?: string } | null)?.message ?? response.statusText;
     super(`${method} ${url} failed with ${response.status}: ${message}`);
     this.name = 'GitHubError';
     this.status = response.status;
@@ -24,11 +71,15 @@ export function createClient({
   baseUrl = process.env.GITHUB_API_URL || 'https://api.github.com',
   fetchImpl = undefined,
   retries = 2,
-  wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
-}) {
+  wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+}: ClientOptions): GitHubClient {
   if (!token) throw new Error('A GitHub token is required.');
 
-  async function request(method, path, { body, allow404 = false } = {}) {
+  async function request(
+    method: string,
+    path: string,
+    { body, allow404 = false }: RequestOptions = {}
+  ): Promise<any> {
     const url = path.startsWith('http') ? path : `${baseUrl}${path}`;
 
     for (let attempt = 0; ; attempt += 1) {
@@ -67,7 +118,7 @@ export function createClient({
   };
 }
 
-async function readBody(response) {
+async function readBody(response: FetchResponse): Promise<unknown> {
   const text = await response.text();
   if (text === '') return null;
   try {

@@ -1,4 +1,38 @@
-import { percentage } from './coverage.js';
+import {
+  percentage,
+  type Report,
+  type ReportTotals,
+  type Summary
+} from './coverage.ts';
+
+export interface FilePatch {
+  path: string;
+  covered: number;
+  total: number;
+  pct: number;
+  /** Changed lines the suite never executed, ascending. */
+  uncovered: number[];
+}
+
+export interface PatchCoverage {
+  covered: number;
+  total: number;
+  pct: number;
+  files: FilePatch[];
+}
+
+export interface MetricDelta {
+  pct: number;
+  covered: number;
+  total: number;
+  /** What the base recorded, so a reader can see both ends of the move. */
+  before: number;
+}
+
+export interface CoverageDelta {
+  base: Summary;
+  metrics: Partial<Record<'lines' | 'branches' | 'functions', MetricDelta>>;
+}
 
 /**
  * Patch coverage: of the lines this pull request added or changed, how many did
@@ -14,8 +48,11 @@ import { percentage } from './coverage.js';
  * lines, comments, imports, a `}` — no coverage tool emits a record for them, and
  * inventing one would make every formatting commit look uncovered.
  */
-export function patchCoverage(report, changedLines) {
-  const files = [];
+export function patchCoverage(
+  report: Report,
+  changedLines: Map<string, Set<number>>
+): PatchCoverage {
+  const files: FilePatch[] = [];
   let covered = 0;
   let total = 0;
 
@@ -23,7 +60,7 @@ export function patchCoverage(report, changedLines) {
     const file = report.files.get(path);
     if (!file) continue;
 
-    const uncovered = [];
+    const uncovered: number[] = [];
     let fileCovered = 0;
     let fileTotal = 0;
 
@@ -58,7 +95,7 @@ export function patchCoverage(report, changedLines) {
  * test — not to read an alphabetical list of the files that are already fine.
  * Ties break on the number of uncovered lines, then on path for a stable order.
  */
-function byWorstFirst(a, b) {
+function byWorstFirst(a: FilePatch, b: FilePatch): number {
   if (a.pct !== b.pct) return a.pct - b.pct;
   if (a.uncovered.length !== b.uncovered.length)
     return b.uncovered.length - a.uncovered.length;
@@ -70,11 +107,14 @@ function byWorstFirst(a, b) {
  * is a real and common answer: the first run on a repository, or a pull request
  * whose base branch has never been measured.
  */
-export function coverageDelta(totals, baseSummary) {
+export function coverageDelta(
+  totals: ReportTotals,
+  baseSummary: Summary | null
+): CoverageDelta | null {
   if (!baseSummary?.totals) return null;
 
-  const delta = {};
-  for (const metric of ['lines', 'branches', 'functions']) {
+  const delta: CoverageDelta['metrics'] = {};
+  for (const metric of ['lines', 'branches', 'functions'] as const) {
     const now = totals[metric];
     const before = baseSummary.totals[metric];
     if (!before) continue;
@@ -89,6 +129,6 @@ export function coverageDelta(totals, baseSummary) {
   return { base: baseSummary, metrics: delta };
 }
 
-function round(value) {
+function round(value: number): number {
   return Math.round(value * 100) / 100;
 }

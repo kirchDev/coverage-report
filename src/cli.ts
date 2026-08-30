@@ -1,9 +1,14 @@
 import { readFile, writeFile } from 'node:fs/promises';
-import { defineCommand } from 'citty';
-import { mergeReports, toSummary } from './coverage.js';
-import { detectFormat, FORMATS, parseFile } from './parsers/index.js';
-import { buildReport } from './pipeline.js';
-import { format as pct } from './render.js';
+import { defineCommand, type ArgsDef } from 'citty';
+import { mergeReports, toSummary } from './coverage.ts';
+import {
+  detectFormat,
+  FORMATS,
+  parseFile,
+  type Format
+} from './parsers/index.ts';
+import { buildReport, type BuildResult } from './pipeline.ts';
+import { format as pct, type Thresholds } from './render.ts';
 
 const sharedArgs = {
   report: {
@@ -21,7 +26,7 @@ const sharedArgs = {
     type: 'string',
     description: `Force a format (${FORMATS.join(', ')}) instead of detecting it from the content.`
   }
-};
+} satisfies ArgsDef;
 
 const report = defineCommand({
   meta: {
@@ -80,7 +85,7 @@ const report = defineCommand({
     const result = await buildReport({
       reports: reportsFrom(args, rawArgs),
       root: args.root,
-      format: args.format,
+      format: toFormat(args.format),
       diff: args.diff,
       base: args.base,
       name: args.name,
@@ -126,7 +131,12 @@ const merge = defineCommand({
     const parsed = [];
     for (const path of reportsFrom(args, rawArgs)) {
       parsed.push(
-        (await parseFile(path, { root: args.root, format: args.format })).report
+        (
+          await parseFile(path, {
+            root: args.root,
+            format: toFormat(args.format)
+          })
+        ).report
       );
     }
 
@@ -170,7 +180,7 @@ export const main = defineCommand({
  * Both spellings exist because the Action passes one string and a human at a
  * shell reaches for a glob — `coverage-report report coverage/*.xml` has to work.
  */
-function reportsFrom(args, rawArgs = []) {
+function reportsFrom(args: ReportArgs, rawArgs: string[] = []): string[] {
   // A repeated `--report` keeps only the last value, which would silently
   // report on one half of a monorepo and look entirely healthy doing it. Better
   // to refuse than to answer a question nobody asked.
@@ -193,9 +203,33 @@ function reportsFrom(args, rawArgs = []) {
   return reports;
 }
 
-function toArray(value) {
+/** Only the fields these helpers read, so citty's inferred arg types all fit. */
+interface ReportArgs {
+  report?: unknown;
+  _?: unknown;
+}
+
+interface ThresholdArgs {
+  'min-total'?: unknown;
+  'min-patch'?: unknown;
+}
+
+/**
+ * Validates `--format` rather than passing the string through. An unknown value
+ * would otherwise reach the parser table, miss, and surface as a confusing
+ * "unsupported format" far from where it was typed.
+ */
+function toFormat(value: string | undefined): Format | null {
+  if (!value) return null;
+  if ((FORMATS as readonly string[]).includes(value)) return value as Format;
+  throw new Error(
+    `Unknown format "${value}". Expected one of ${FORMATS.join(', ')}.`
+  );
+}
+
+function toArray(value: unknown): string[] {
   if (value === undefined || value === null) return [];
-  return (Array.isArray(value) ? value : [value]).flatMap((entry) =>
+  return (Array.isArray(value) ? value : [value]).flatMap((entry: unknown) =>
     String(entry)
       .split(/[\n,]/)
       .map((part) => part.trim())
@@ -203,8 +237,8 @@ function toArray(value) {
   );
 }
 
-function readThresholds(args) {
-  const thresholds = {};
+function readThresholds(args: ThresholdArgs): Thresholds {
+  const thresholds: Thresholds = {};
   if (args['min-total'] !== undefined)
     thresholds.total = Number(args['min-total']);
   if (args['min-patch'] !== undefined)
@@ -212,7 +246,7 @@ function readThresholds(args) {
   return thresholds;
 }
 
-function asJson(result) {
+function asJson(result: BuildResult): Record<string, unknown> {
   return {
     sources: result.sources,
     totals: result.totals,

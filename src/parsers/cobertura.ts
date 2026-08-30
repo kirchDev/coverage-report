@@ -1,6 +1,13 @@
-import { createReport, fileOf, recordHits, recordKey } from '../coverage.js';
-import { normalisePath } from '../paths.js';
-import { scanTags } from './xml.js';
+import {
+  createReport,
+  fileOf,
+  recordHits,
+  recordKey,
+  type FileCoverage,
+  type Report
+} from '../coverage.ts';
+import { normalisePath, type PathOptions } from '../paths.ts';
+import { scanTags } from './xml.ts';
 
 /**
  * Cobertura — what Vitest's `cobertura` reporter, PHPUnit's `--coverage-cobertura`
@@ -21,13 +28,13 @@ import { scanTags } from './xml.js';
 const CONDITION = /\((\d+)\/(\d+)\)/;
 const SOURCE = /<source>([^<]*)<\/source>/g;
 
-export function parseCobertura(xml, options = {}) {
+export function parseCobertura(xml: string, options: PathOptions = {}): Report {
   const report = createReport();
   const sourceRoots = readSourceRoots(xml);
   const pathOptions = { ...options, sourceRoots };
 
-  let file = null;
-  let method = null;
+  let file: FileCoverage | null = null;
+  let method: string | null = null;
   let methodHits = 0;
 
   for (const tag of scanTags(xml)) {
@@ -85,7 +92,11 @@ export function parseCobertura(xml, options = {}) {
   return report;
 }
 
-function recordBranches(file, number, attributes) {
+function recordBranches(
+  file: FileCoverage,
+  number: number,
+  attributes: Record<string, string>
+): void {
   if (attributes.branch !== 'true') return;
   const condition = CONDITION.exec(attributes['condition-coverage'] ?? '');
   if (!condition) return;
@@ -109,12 +120,12 @@ function recordBranches(file, number, attributes) {
  * Rather than teach it text nodes for one element in one format, the roots are
  * lifted out with a targeted match before the walk.
  */
-function readSourceRoots(xml) {
-  const roots = [];
+function readSourceRoots(xml: string): string[] {
+  const roots: string[] = [];
   SOURCE.lastIndex = 0;
-  let match;
+  let match: RegExpExecArray | null;
   while ((match = SOURCE.exec(xml)) !== null) {
-    const value = match[1].trim();
+    const value = (match[1] ?? '').trim();
     if (value !== '' && value !== '.') roots.push(value);
   }
   return roots;

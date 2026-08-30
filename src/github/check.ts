@@ -1,3 +1,5 @@
+import type { GitHubClient } from './api.ts';
+
 /**
  * The check run. A comment is for a reader; a check run is for branch protection
  * — it is the half that can actually stop a merge, and it is why the thresholds
@@ -7,8 +9,21 @@
  * tick that means "nobody asked for anything" reads as a passing quality gate to
  * every human who sees it, and there is no gate.
  */
+export interface CheckRunOptions {
+  owner: string;
+  repo: string;
+  sha: string;
+  name: string;
+  title: string;
+  summary: string;
+  failures?: string[];
+  /** True when the repository configured a threshold, so a pass means something. */
+  gated?: boolean;
+  detailsUrl?: string | null;
+}
+
 export async function writeCheckRun(
-  client,
+  client: GitHubClient,
   {
     owner,
     repo,
@@ -19,8 +34,8 @@ export async function writeCheckRun(
     failures = [],
     gated = false,
     detailsUrl = null
-  }
-) {
+  }: CheckRunOptions
+): Promise<unknown> {
   const conclusion =
     failures.length > 0 ? 'failure' : gated ? 'success' : 'neutral';
 

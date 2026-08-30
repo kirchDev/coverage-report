@@ -1,29 +1,100 @@
 import { readFileSync } from 'node:fs';
-import { mergeReports, reportTotals, toSummary } from './coverage.js';
-import { parsePatchHunks } from './diff.js';
-import { createClient } from './github/api.js';
+import {
+  mergeReports,
+  reportTotals,
+  toSummary,
+  type Summary
+} from './coverage.ts';
+import { parsePatchHunks } from './diff.ts';
+import {
+  createClient,
+  type FetchLike,
+  type GitHubClient
+} from './github/api.ts';
 import {
   baseStatePath,
   readBaseState,
   writeBaseState
-} from './github/base-state.js';
-import { writeCheckRun } from './github/check.js';
-import { upsertComment } from './github/comment.js';
-import { parseFile } from './parsers/index.js';
-import { coverageDelta, patchCoverage } from './patch.js';
+} from './github/base-state.ts';
+import { writeCheckRun } from './github/check.ts';
+import { upsertComment } from './github/comment.ts';
+import { parseFile, type Format } from './parsers/index.ts';
+import {
+  coverageDelta,
+  patchCoverage,
+  type CoverageDelta,
+  type PatchCoverage
+} from './patch.ts';
 import {
   renderCheckSummary,
   renderMarkdown,
-  thresholdFailures
-} from './render.js';
-import { core } from './workflow.js';
+  thresholdFailures,
+  type Thresholds
+} from './render.ts';
+import { core } from './workflow.ts';
+
+/** The subset of the environment this action reads. */
+export type ActionEnv = Record<string, string | undefined>;
+
+export interface ActionInputs {
+  reports: string[];
+  token: string;
+  format: Format | null;
+  root: string;
+  name: string;
+  comment: boolean;
+  checkRun: boolean;
+  checkName: string;
+  baseBranch: string;
+  updateBase: string;
+  failOnThreshold: boolean;
+  fileLimit: number;
+  thresholds: Thresholds;
+}
+
+export interface ActionContext {
+  owner: string;
+  repo: string;
+  eventName: string;
+  sha: string;
+  ref: string;
+  baseRef: string | null;
+  pullNumber: number | null;
+  repositoryUrl: string | null;
+  runUrl: string | null;
+}
+
+/** Only the parts of a webhook payload this action looks at. */
+interface EventPayload {
+  pull_request?: {
+    number?: number;
+    head?: { sha?: string };
+    base?: { ref?: string };
+  };
+  issue?: { number?: number };
+}
+
+interface PullRequestFile {
+  filename: string;
+  status: string;
+  patch?: string;
+}
 
 /**
  * The Action: input gathering, then delivery. Every number it reports comes from
  * the same modules the CLI drives, so `coverage-report report` run locally and
  * the comment on the pull request cannot disagree.
  */
-export async function run(env = process.env, { fetchImpl } = {}) {
+export async function run(
+  env: ActionEnv = process.env,
+  { fetchImpl }: { fetchImpl?: FetchLike } = {}
+): Promise<{
+  totals: ReturnType<typeof reportTotals>;
+  patch: PatchCoverage | null;
+  delta: CoverageDelta | null;
+  failures: string[];
+  markdown: string;
+}> {
   const input = readInputs(env);
   const context = readContext(env);
 
@@ -136,8 +207,15 @@ export async function run(env = process.env, { fetchImpl } = {}) {
   return { totals, patch, delta, failures, markdown };
 }
 
-async function changedLines(client, { owner, repo, pullNumber }) {
-  const changed = new Map();
+async function changedLines(
+  client: GitHubClient,
+  {
+    owner,
+    repo,
+    pullNumber
+  }: { owner: string; repo: string; pullNumber: number }
+): Promise<Map<string, Set<number>>> {
+  const changed = new Map<string, Set<number>>();
 
   for (let page = 1; page <= 30; page += 1) {
     const files = await client.get(
@@ -145,7 +223,7 @@ async function changedLines(client, { owner, repo, pullNumber }) {
     );
     if (!Array.isArray(files) || files.length === 0) break;
 
-    for (const file of files) {
+    for (const file of files as PullRequestFile[]) {
       if (file.status === 'removed') continue;
       const lines = parsePatchHunks(file.patch);
       if (lines.size > 0) changed.set(file.filename, lines);
@@ -157,7 +235,10 @@ async function changedLines(client, { owner, repo, pullNumber }) {
   return changed;
 }
 
-async function loadBaseState(client, { input, context }) {
+async function loadBaseState(
+  client: GitHubClient,
+  { input, context }: { input: ActionInputs; context: ActionContext }
+): Promise<Summary | null> {
   if (!input.baseBranch) return null;
 
   const ref = context.baseRef ?? context.ref;
@@ -180,14 +261,17 @@ async function loadBaseState(client, { input, context }) {
  * request: a PR's own number is what we are comparing *against* the base, and
  * recording it would make every branch its own baseline and every delta zero.
  */
-function shouldUpdateBase(input, context) {
+function shouldUpdateBase(
+  input: ActionInputs,
+  context: ActionContext
+): boolean {
   if (input.updateBase === 'false') return false;
   if (!input.baseBranch) return false;
   if (input.updateBase === 'true') return true;
   return context.eventName === 'push' && !context.pullNumber;
 }
 
-export function readInputs(env) {
+export function readInputs(env: ActionEnv): ActionInputs {
   const reports = list(input(env, 'reports'));
   if (reports.length === 0) throw new Error('The "reports" input is required.');
 
@@ -200,7 +284,7 @@ export function readInputs(env) {
   return {
     reports,
     token,
-    format: input(env, 'format') || null,
+    format: (input(env, 'format') || null) as Format | null,
     root: input(env, 'root') || env.GITHUB_WORKSPACE || process.cwd(),
     name: input(env, 'name') || '',
     comment: boolean(input(env, 'comment'), true),
@@ -220,8 +304,10 @@ export function readInputs(env) {
   };
 }
 
-export function readContext(env) {
-  const [owner, repo] = String(env.GITHUB_REPOSITORY ?? '').split('/');
+export function readContext(env: ActionEnv): ActionContext {
+  const [owner = '', repo = ''] = String(env.GITHUB_REPOSITORY ?? '').split(
+    '/'
+  );
   const event = readEvent(env);
   const pullNumber =
     event?.pull_request?.number ?? event?.issue?.number ?? null;
@@ -246,10 +332,12 @@ export function readContext(env) {
   };
 }
 
-function readEvent(env) {
+function readEvent(env: ActionEnv): EventPayload | null {
   if (!env.GITHUB_EVENT_PATH) return null;
   try {
-    return JSON.parse(readFileSync(env.GITHUB_EVENT_PATH, 'utf8'));
+    return JSON.parse(
+      readFileSync(env.GITHUB_EVENT_PATH, 'utf8')
+    ) as EventPayload;
   } catch {
     // A workflow can be triggered by an event this action does not need, and a
     // missing or unreadable payload only costs the pull-request half of the run
@@ -258,29 +346,32 @@ function readEvent(env) {
   }
 }
 
-function input(env, key) {
+function input(env: ActionEnv, key: string): string {
   return (raw(env, key) ?? '').trim();
 }
 
 /** Distinguishes "not configured" from "configured to nothing", which is how
  *  `base-branch: ''` switches the base state off rather than defaulting it on. */
-function raw(env, key) {
+function raw(env: ActionEnv, key: string): string | undefined {
   return env[`INPUT_${key.toUpperCase()}`];
 }
 
-function list(value) {
+function list(value: string): string[] {
   return String(value)
     .split(/[\n,]/)
     .map((entry) => entry.trim())
     .filter(Boolean);
 }
 
-function boolean(value, fallback) {
+function boolean(value: string, fallback: boolean): boolean {
   if (value === '') return fallback;
   return value.toLowerCase() === 'true';
 }
 
-function optionalNumber(key, value) {
+function optionalNumber(
+  key: 'total' | 'patch',
+  value: string
+): Partial<Thresholds> {
   if (value === '') return {};
   const parsed = Number(value);
   return Number.isFinite(parsed) ? { [key]: parsed } : {};

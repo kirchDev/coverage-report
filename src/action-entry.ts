@@ -1,5 +1,5 @@
-import { core } from './workflow.js';
-import { run } from './action.js';
+import { core } from './workflow.ts';
+import { run } from './action.ts';
 
 try {
   await run();

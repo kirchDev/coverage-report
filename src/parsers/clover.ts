@@ -1,6 +1,13 @@
-import { createReport, fileOf, recordHits, recordKey } from '../coverage.js';
-import { normalisePath } from '../paths.js';
-import { scanTags } from './xml.js';
+import {
+  createReport,
+  fileOf,
+  recordHits,
+  recordKey,
+  type FileCoverage,
+  type Report
+} from '../coverage.ts';
+import { normalisePath, type PathOptions } from '../paths.ts';
+import { scanTags } from './xml.ts';
 
 /**
  * Clover — PHPUnit's and Pest's default (`<clover outputFile="coverage.xml"/>`),
@@ -27,9 +34,9 @@ import { scanTags } from './xml.js';
  * Xdebug only with `xdebug.mode=coverage` plus branch analysis, so a PHP report
  * with a zero branch total is the normal case, not a parse failure.
  */
-export function parseClover(xml, options = {}) {
+export function parseClover(xml: string, options: PathOptions = {}): Report {
   const report = createReport();
-  let file = null;
+  let file: FileCoverage | null = null;
 
   for (const tag of scanTags(xml)) {
     if (tag.name === 'file') {

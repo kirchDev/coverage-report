@@ -1,4 +1,23 @@
-import { formatLineRanges } from './diff.js';
+import type { ReportTotals, Summary } from './coverage.ts';
+import { formatLineRanges } from './diff.ts';
+import type { CoverageDelta, MetricDelta, PatchCoverage } from './patch.ts';
+
+/** Percentages a run may be held to. Absent means "nobody asked". */
+export interface Thresholds {
+  total?: number;
+  patch?: number;
+}
+
+export interface RenderOptions {
+  totals: ReportTotals;
+  patch?: PatchCoverage | null;
+  delta?: CoverageDelta | null;
+  name?: string;
+  thresholds?: Thresholds;
+  fileLimit?: number;
+  commit?: string | null;
+  repositoryUrl?: string | null;
+}
 
 /**
  * The comment body.
@@ -9,7 +28,7 @@ import { formatLineRanges } from './diff.js';
  * marker so a repository can post two independent reports (say, one per package)
  * without them overwriting each other.
  */
-export function marker(name = '') {
+export function marker(name = ''): string {
   return `<!-- coverage-report${name ? `:${name}` : ''} -->`;
 }
 
@@ -22,7 +41,7 @@ export function renderMarkdown({
   fileLimit = 20,
   commit = null,
   repositoryUrl = null
-}) {
+}: RenderOptions): string {
   const lines = [marker(name)];
 
   lines.push(
@@ -46,13 +65,17 @@ export function renderMarkdown({
   return `${lines.join('\n').trimEnd()}\n`;
 }
 
-function totalsTable(totals, delta, thresholds) {
+function totalsTable(
+  totals: ReportTotals,
+  delta: CoverageDelta | null,
+  thresholds: Thresholds
+): string {
   const rows = [
     '| | Coverage | Covered / Total | Change |',
     '| :--- | ---: | ---: | ---: |'
   ];
 
-  for (const metric of ['lines', 'branches', 'functions']) {
+  for (const metric of ['lines', 'branches', 'functions'] as const) {
     const value = totals[metric];
     if (value.total === 0) continue;
     const threshold = metric === 'lines' ? thresholds.total : undefined;
@@ -65,7 +88,7 @@ function totalsTable(totals, delta, thresholds) {
   return rows.join('\n');
 }
 
-function patchSection(patch, thresholds) {
+function patchSection(patch: PatchCoverage, thresholds: Thresholds): string {
   if (patch.total === 0) {
     return '> [!NOTE]\n> No changed line in this pull request carries coverage data — nothing measurable changed.';
   }
@@ -82,7 +105,12 @@ function patchSection(patch, thresholds) {
   return `${summary} — ${uncovered} changed ${uncovered === 1 ? 'line is' : 'lines are'} not covered.`;
 }
 
-function fileSection(patch, fileLimit, commit, repositoryUrl) {
+function fileSection(
+  patch: PatchCoverage,
+  fileLimit: number,
+  commit: string | null,
+  repositoryUrl: string | null
+): string {
   const shown = patch.files
     .filter((file) => file.uncovered.length > 0)
     .slice(0, fileLimit);
@@ -118,29 +146,33 @@ function fileSection(patch, fileLimit, commit, repositoryUrl) {
   ].join('\n');
 }
 
-function baseLine(base) {
+function baseLine(base: Summary): string {
   const at = base.sha ? `\`${base.sha.slice(0, 7)}\`` : 'the base state';
   const ref = base.ref ? ` on \`${base.ref}\`` : '';
   return `<sub>Compared against ${at}${ref}.</sub>`;
 }
 
-function link(path, commit, repositoryUrl) {
+function link(
+  path: string,
+  commit: string | null,
+  repositoryUrl: string | null
+): string {
   if (!commit || !repositoryUrl) return `\`${path}\``;
   return `[\`${path}\`](${repositoryUrl}/blob/${commit}/${path})`;
 }
 
-function renderDelta(metric) {
+function renderDelta(metric: MetricDelta | undefined): string {
   if (!metric) return '–';
   if (metric.pct === 0) return '±0.00%';
   const arrow = metric.pct > 0 ? '▲' : '▼';
   return `${arrow} ${metric.pct > 0 ? '+' : ''}${format(metric.pct)}`;
 }
 
-function label(metric) {
-  return metric[0].toUpperCase() + metric.slice(1);
+function label(metric: string): string {
+  return metric.charAt(0).toUpperCase() + metric.slice(1);
 }
 
-export function format(pct) {
+export function format(pct: number): string {
   return `${pct.toFixed(2)}%`;
 }
 
@@ -150,8 +182,8 @@ export function format(pct) {
  * number nobody promised to hit is noise that trains reviewers to ignore the
  * comment.
  */
-function icon(pct, threshold) {
-  if (threshold === undefined || threshold === null) return '⚪';
+function icon(pct: number, threshold?: number): string {
+  if (threshold === undefined) return '⚪';
   return pct >= threshold ? '🟢' : '🔴';
 }
 
@@ -160,7 +192,13 @@ function icon(pct, threshold) {
  * output is read in a list next to twenty other checks, so it answers "did this
  * pass and by how much" and links out for the rest.
  */
-export function renderCheckSummary({ totals, patch }) {
+export function renderCheckSummary({
+  totals,
+  patch
+}: {
+  totals: ReportTotals;
+  patch?: PatchCoverage | null;
+}): string {
   const parts = [
     `Lines ${format(totals.lines.pct)} (${totals.lines.covered}/${totals.lines.total})`
   ];
@@ -172,8 +210,16 @@ export function renderCheckSummary({ totals, patch }) {
   return parts.join(' · ');
 }
 
-export function thresholdFailures({ totals, patch, thresholds = {} }) {
-  const failures = [];
+export function thresholdFailures({
+  totals,
+  patch,
+  thresholds = {}
+}: {
+  totals: ReportTotals;
+  patch?: PatchCoverage | null;
+  thresholds?: Thresholds;
+}): string[] {
+  const failures: string[] = [];
   if (thresholds.total !== undefined && totals.lines.pct < thresholds.total) {
     failures.push(
       `total ${format(totals.lines.pct)} is below the required ${format(thresholds.total)}`

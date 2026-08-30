@@ -4,19 +4,19 @@ export {
   metricTotals,
   reportTotals,
   toSummary
-} from './coverage.js';
-export { formatLineRanges, parsePatchHunks, parseUnifiedDiff } from './diff.js';
+} from './coverage.ts';
+export { formatLineRanges, parsePatchHunks, parseUnifiedDiff } from './diff.ts';
 export {
   detectFormat,
   FORMATS,
   parseContent,
   parseFile
-} from './parsers/index.js';
-export { coverageDelta, patchCoverage } from './patch.js';
-export { buildReport } from './pipeline.js';
+} from './parsers/index.ts';
+export { coverageDelta, patchCoverage } from './patch.ts';
+export { buildReport } from './pipeline.ts';
 export {
   marker,
   renderCheckSummary,
   renderMarkdown,
   thresholdFailures
-} from './render.js';
+} from './render.ts';

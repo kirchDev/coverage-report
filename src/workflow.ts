@@ -14,38 +14,38 @@ import { appendFileSync } from 'node:fs';
  * rest — which is exactly what a markdown body is.
  */
 export const core = {
-  info(message) {
+  info(message: string): void {
     process.stdout.write(`${message}\n`);
   },
 
-  warn(message) {
+  warn(message: string): void {
     process.stdout.write(`::warning::${escapeData(message)}\n`);
   },
 
-  error(message) {
+  error(message: string): void {
     process.stdout.write(`::error::${escapeData(message)}\n`);
   },
 
-  fail(message) {
+  fail(message: string): void {
     process.stdout.write(`::error::${escapeData(message)}\n`);
     process.exitCode = 1;
   },
 
-  setOutput(name, value) {
+  setOutput(name: string, value: string): void {
     const file = process.env.GITHUB_OUTPUT;
     if (!file) return;
     const delimiter = `ghadelimiter_${name}_${Date.now()}`;
     appendFileSync(file, `${name}<<${delimiter}\n${value}\n${delimiter}\n`);
   },
 
-  summary(markdown) {
+  summary(markdown: string): void {
     const file = process.env.GITHUB_STEP_SUMMARY;
     if (!file) return;
     appendFileSync(file, `${markdown}\n`);
   }
 };
 
-function escapeData(value) {
+function escapeData(value: unknown): string {
   return String(value)
     .replaceAll('%', '%25')
     .replaceAll('\r', '%0D')

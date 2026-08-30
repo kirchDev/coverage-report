@@ -1,5 +1,11 @@
-import { createReport, fileOf, recordHits, recordKey } from '../coverage.js';
-import { normalisePath } from '../paths.js';
+import {
+  createReport,
+  fileOf,
+  recordHits,
+  recordKey,
+  type Report
+} from '../coverage.ts';
+import { normalisePath, type PathOptions } from '../paths.ts';
 
 /**
  * Istanbul's `coverage-final.json` — what Vitest and Jest write with the `json`
@@ -34,8 +40,36 @@ export class SummaryReportError extends Error {
   }
 }
 
-export function parseIstanbul(json, options = {}) {
-  const data = typeof json === 'string' ? JSON.parse(json) : json;
+/** Only the parts of Istanbul's shape this parser reads. */
+interface Position {
+  line?: number;
+}
+
+interface Location {
+  start?: Position;
+}
+
+interface IstanbulEntry {
+  path?: string;
+  statementMap?: Record<string, Location>;
+  s?: Record<string, number>;
+  fnMap?: Record<string, { name?: string; decl?: Location; loc?: Location }>;
+  f?: Record<string, number>;
+  branchMap?: Record<
+    string,
+    { loc?: Location; line?: number; locations?: unknown[] }
+  >;
+  b?: Record<string, number[]>;
+  /** Present only in coverage-summary.json, which this parser refuses. */
+  lines?: { pct?: number };
+}
+
+export function parseIstanbul(
+  json: string | Record<string, unknown>,
+  options: PathOptions = {}
+): Report {
+  const raw: unknown = typeof json === 'string' ? JSON.parse(json) : json;
+  const data = raw as Record<string, IstanbulEntry>;
   if (isSummary(data)) throw new SummaryReportError();
 
   const report = createReport();
@@ -49,8 +83,8 @@ export function parseIstanbul(json, options = {}) {
     for (const [id, statement] of Object.entries(entry.statementMap ?? {})) {
       const line = statement?.start?.line;
       if (!Number.isFinite(line)) continue;
-      recordKey(file.lines, line);
-      recordHits(file.lines, line, entry.s?.[id] ?? 0);
+      recordKey(file.lines, line as number);
+      recordHits(file.lines, line as number, entry.s?.[id] ?? 0);
     }
 
     for (const [id, fn] of Object.entries(entry.fnMap ?? {})) {
@@ -75,7 +109,7 @@ export function parseIstanbul(json, options = {}) {
   return report;
 }
 
-function isSummary(data) {
+function isSummary(data: Record<string, IstanbulEntry>): boolean {
   for (const [key, entry] of Object.entries(data)) {
     if (!entry || typeof entry !== 'object') continue;
     if (entry.statementMap || entry.fnMap || entry.branchMap) return false;

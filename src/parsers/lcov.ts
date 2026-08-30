@@ -1,5 +1,11 @@
-import { createReport, fileOf, recordHits, recordKey } from '../coverage.js';
-import { normalisePath } from '../paths.js';
+import {
+  createReport,
+  fileOf,
+  recordHits,
+  recordKey,
+  type Report
+} from '../coverage.ts';
+import { normalisePath, type PathOptions } from '../paths.ts';
 
 /**
  * lcov — what Vitest, Jest, c8 and nyc write, and what gcov has written for two
@@ -14,7 +20,7 @@ import { normalisePath } from '../paths.js';
  * they are the file's own totals, and recomputing them from the raw records is
  * what makes a merge of two reports come out right.
  */
-export function parseLcov(text, options = {}) {
+export function parseLcov(text: string, options: PathOptions = {}): Report {
   const report = createReport();
   let file = null;
   const functionLines = new Map();

@@ -22,7 +22,7 @@
  */
 const HUNK = /^@@+ (?:-\d+(?:,\d+)? )*\+(\d+)(?:,(\d+))? @@/;
 
-export function parseUnifiedDiff(text) {
+export function parseUnifiedDiff(text: string): Map<string, Set<number>> {
   const changed = new Map();
 
   let path = null;
@@ -78,8 +78,8 @@ export function parseUnifiedDiff(text) {
   return changed;
 }
 
-function readPath(raw) {
-  const value = raw.split('\t')[0].trim();
+function readPath(raw: string): string | null {
+  const value = (raw.split('\t')[0] ?? '').trim();
   if (value === '/dev/null') return null;
   if (value.startsWith('b/') || value.startsWith('a/')) return value.slice(2);
   return value;
@@ -90,14 +90,16 @@ function readPath(raw) {
  * forty individual line numbers is a comment nobody reads.
  */
 export function formatLineRanges(
-  lines,
-  { limit = Number.POSITIVE_INFINITY } = {}
-) {
+  lines: Iterable<number>,
+  { limit = Number.POSITIVE_INFINITY }: { limit?: number } = {}
+): string {
   const sorted = [...lines].sort((a, b) => a - b);
-  const ranges = [];
+  const ranges: string[] = [];
 
-  let start = null;
-  let previous = null;
+  // `previous` is only read once `start` is set, which happens on the first
+  // iteration — the initial value is never the one compared against.
+  let start: number | null = null;
+  let previous = 0;
 
   for (const line of sorted) {
     if (start === null) {
@@ -125,7 +127,7 @@ export function formatLineRanges(
  * than writing a second one is deliberate — two diff readers is exactly how the
  * comment and the check run start disagreeing.
  */
-export function parsePatchHunks(patch) {
+export function parsePatchHunks(patch: string | null | undefined): Set<number> {
   if (!patch) return new Set();
   const changed = parseUnifiedDiff(`+++ b/f\n${patch}`);
   return changed.get('f') ?? new Set();

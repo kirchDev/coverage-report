@@ -17,10 +17,15 @@
  */
 const DRIVE = /^[A-Za-z]:\//;
 
+export interface PathOptions {
+  root?: string;
+  sourceRoots?: string[];
+}
+
 export function normalisePath(
-  raw,
-  { root = process.cwd(), sourceRoots = [] } = {}
-) {
+  raw: string | undefined,
+  { root = process.cwd(), sourceRoots = [] }: PathOptions = {}
+): string {
   if (!raw) return '';
 
   const path = clean(raw);
@@ -48,7 +53,7 @@ export function normalisePath(
   return path.replace(DRIVE, '').replace(/^\/+/, '');
 }
 
-function clean(value) {
+function clean(value: string): string {
   return String(value)
     .trim()
     .replaceAll('\\', '/')
@@ -56,16 +61,16 @@ function clean(value) {
     .replace(/\/+$/, '');
 }
 
-function isAbsolute(path) {
+function isAbsolute(path: string): boolean {
   return path.startsWith('/') || DRIVE.test(path);
 }
 
-function join(base, path) {
+function join(base: string, path: string): string {
   return base === '' ? path : `${base}/${path}`;
 }
 
 /** The path below `base`, or null when it is not below it at all. */
-function within(base, path) {
+function within(base: string, path: string): string | null {
   if (base === '') return null;
   if (path === base) return '';
   const prefix = base.endsWith('/') ? base : `${base}/`;

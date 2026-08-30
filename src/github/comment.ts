@@ -1,4 +1,25 @@
-import { marker } from '../render.js';
+import { marker } from '../render.ts';
+import type { GitHubClient } from './api.ts';
+
+export interface CommentOptions {
+  owner: string;
+  repo: string;
+  issueNumber: number;
+  body: string;
+  name?: string;
+}
+
+export interface CommentResult {
+  action: 'created' | 'updated' | 'unchanged';
+  id: number;
+  url: string;
+}
+
+interface IssueComment {
+  id: number;
+  body?: string;
+  html_url: string;
+}
 
 /**
  * One comment per report, edited in place.
@@ -10,9 +31,9 @@ import { marker } from '../render.js';
  * by a human in a review never gets overwritten.
  */
 export async function upsertComment(
-  client,
-  { owner, repo, issueNumber, body, name = '' }
-) {
+  client: GitHubClient,
+  { owner, repo, issueNumber, body, name = '' }: CommentOptions
+): Promise<CommentResult> {
   const needle = marker(name);
   const existing = await findComment(client, {
     owner,
@@ -38,14 +59,24 @@ export async function upsertComment(
   return { action: 'created', id: created.id, url: created.html_url };
 }
 
-async function findComment(client, { owner, repo, issueNumber, needle }) {
+async function findComment(
+  client: GitHubClient,
+  {
+    owner,
+    repo,
+    issueNumber,
+    needle
+  }: { owner: string; repo: string; issueNumber: number; needle: string }
+): Promise<IssueComment | null> {
   for (let page = 1; page <= 10; page += 1) {
     const comments = await client.get(
       `/repos/${owner}/${repo}/issues/${issueNumber}/comments?per_page=100&page=${page}`
     );
     if (!Array.isArray(comments) || comments.length === 0) return null;
 
-    const match = comments.find((comment) => comment.body?.includes(needle));
+    const match = (comments as IssueComment[]).find((comment) =>
+      comment.body?.includes(needle)
+    );
     if (match) return match;
 
     if (comments.length < 100) return null;
