@@ -1,32 +1,35 @@
 {
   "$schema": "https://www.schemastore.org/package.json",
-  "name": "scaffold",
-  "version": "0.3.0",
-  "description": "Language-agnostic baseline template for new kirchDev repositories.",
+  "name": "coverage-report",
+  "version": "0.0.0",
+  "description": "Self-hosted coverage reporting on pull requests — total, delta and patch coverage from the reports CI already produces, with no third-party platform.",
   "keywords": [
-    "commitlint",
-    "conventional-commits",
-    "dependabot",
-    "github-template",
-    "husky",
+    "clover",
+    "cobertura",
+    "code-coverage",
+    "coverage",
+    "coverage-report",
+    "github-action",
+    "istanbul",
     "kirchdev",
+    "lcov",
+    "monorepo",
     "nodejs",
-    "oxfmt",
-    "oxlint",
-    "pnpm",
-    "release-please",
-    "scaffold",
-    "template"
+    "patch-coverage",
+    "pest",
+    "phpunit",
+    "pull-request",
+    "vitest"
   ],
-  "homepage": "https://github.com/TitusKirch/scaffold#readme",
+  "homepage": "https://github.com/kirchDev/coverage-report#readme",
   "bugs": {
-    "url": "https://github.com/TitusKirch/scaffold/issues"
+    "url": "https://github.com/kirchDev/coverage-report/issues"
   },
   "license": "MIT",
   "author": "Titus Kirch <titus.kirch@kirch.dev>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/TitusKirch/scaffold.git"
+    "url": "git+https://github.com/kirchDev/coverage-report.git"
   },
   "type": "module",
   "scripts": {
