@@ -61,7 +61,7 @@
     "taze": "taze",
     "taze:w": "taze -w",
     "test": "node --test 'test/**/*.test.ts'",
-    "test:coverage": "node --test --experimental-test-coverage --test-coverage-exclude='test/**' --test-reporter=lcov --test-reporter-destination=coverage/lcov.info --test-reporter=spec --test-reporter-destination=stdout 'test/**/*.test.ts'",
+    "test:coverage": "node -e \"require('node:fs').mkdirSync('coverage',{recursive:true})\" && node --test --experimental-test-coverage --test-coverage-exclude='test/**' --test-reporter=lcov --test-reporter-destination=coverage/lcov.info --test-reporter=spec --test-reporter-destination=stdout 'test/**/*.test.ts'",
     "test:watch": "node --test --watch 'test/**/*.test.ts'"
   },
   "dependencies": {
