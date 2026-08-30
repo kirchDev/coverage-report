@@ -15,12 +15,76 @@
  */
 
 const NAME = /[A-Za-z_][\w.:-]*/y;
-// `(?=(...))\1` is the JavaScript spelling of an atomic group: the name is
-// captured by a lookahead and then consumed by the backreference, so it can
-// never give characters back. Without it, a long run of name characters with no
-// `=` after it backtracks once per character — quadratic on input that a fork's
-// branch names can reach into.
-const ATTRIBUTE = /\s*(?=([\w.:-]+))\1\s*=\s*("([^"]*)"|'([^']*)')/y;
+
+/**
+ * Attributes are read character by character rather than by a pattern.
+ *
+ * The pattern this replaced — `\s*([\w.:-]+)\s*=\s*("..."|'...')` — had a
+ * backtracking seam at every `\s*`: a long run of spaces or name characters
+ * with nothing valid after it is rescanned once per character. That input is
+ * not ours to trust, because a coverage report carries file paths and on a pull
+ * request from a fork those come from the fork's branch. Making each quantifier
+ * atomic is possible and unreadable; scanning is neither.
+ *
+ * Every step below advances the cursor or stops, so the whole tag is one pass.
+ */
+function isSpace(code: number): boolean {
+  return code === 32 || code === 9 || code === 10 || code === 13;
+}
+
+function isNameChar(code: number): boolean {
+  return (
+    (code >= 97 && code <= 122) || // a-z
+    (code >= 65 && code <= 90) || // A-Z
+    (code >= 48 && code <= 57) || // 0-9
+    code === 95 || // _
+    code === 46 || // .
+    code === 58 || // :
+    code === 45 // -
+  );
+}
+
+function skipSpace(xml: string, from: number): number {
+  let cursor = from;
+  while (cursor < xml.length && isSpace(xml.charCodeAt(cursor))) cursor += 1;
+  return cursor;
+}
+
+/**
+ * Reads `name="value"` pairs until something that is not one, and reports where
+ * it stopped so the caller can find the tag's `>` past any quoted `>` inside a
+ * value.
+ */
+function readAttributes(
+  xml: string,
+  from: number
+): { attributes: Record<string, string>; cursor: number } {
+  const attributes: Record<string, string> = {};
+  let cursor = from;
+
+  for (;;) {
+    const nameStart = skipSpace(xml, cursor);
+    let nameEnd = nameStart;
+    while (nameEnd < xml.length && isNameChar(xml.charCodeAt(nameEnd)))
+      nameEnd += 1;
+    if (nameEnd === nameStart) return { attributes, cursor };
+
+    const equals = skipSpace(xml, nameEnd);
+    if (xml[equals] !== '=') return { attributes, cursor };
+
+    const quote = skipSpace(xml, equals + 1);
+    const quoteChar = xml[quote];
+    if (quoteChar !== '"' && quoteChar !== "'") return { attributes, cursor };
+
+    const valueEnd = xml.indexOf(quoteChar, quote + 1);
+    if (valueEnd === -1) return { attributes, cursor };
+
+    attributes[xml.slice(nameStart, nameEnd)] = decode(
+      xml.slice(quote + 1, valueEnd)
+    );
+    cursor = valueEnd + 1;
+  }
+}
 
 export interface Tag {
   name: string;
@@ -61,18 +125,7 @@ export function* scanTags(xml: string): Generator<Tag> {
       continue;
     }
 
-    let cursor = NAME.lastIndex;
-    const attributes: Record<string, string> = {};
-
-    while (cursor < xml.length) {
-      ATTRIBUTE.lastIndex = cursor;
-      const attribute = ATTRIBUTE.exec(xml);
-      if (!attribute) break;
-      attributes[attribute[1] as string] = decode(
-        attribute[3] ?? attribute[4] ?? ''
-      );
-      cursor = ATTRIBUTE.lastIndex;
-    }
+    const { attributes, cursor } = readAttributes(xml, NAME.lastIndex);
 
     const end = xml.indexOf('>', cursor);
     if (end === -1) return;

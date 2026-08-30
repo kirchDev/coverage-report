@@ -636,7 +636,45 @@ function within(base, path) {
 
 // src/parsers/xml.ts
 var NAME = /[A-Za-z_][\w.:-]*/y;
-var ATTRIBUTE = /\s*(?=([\w.:-]+))\1\s*=\s*("([^"]*)"|'([^']*)')/y;
+function isSpace(code) {
+  return code === 32 || code === 9 || code === 10 || code === 13;
+}
+function isNameChar(code) {
+  return code >= 97 && code <= 122 || // a-z
+  code >= 65 && code <= 90 || // A-Z
+  code >= 48 && code <= 57 || // 0-9
+  code === 95 || // _
+  code === 46 || // .
+  code === 58 || // :
+  code === 45;
+}
+function skipSpace(xml, from) {
+  let cursor = from;
+  while (cursor < xml.length && isSpace(xml.charCodeAt(cursor))) cursor += 1;
+  return cursor;
+}
+function readAttributes(xml, from) {
+  const attributes = {};
+  let cursor = from;
+  for (; ; ) {
+    const nameStart = skipSpace(xml, cursor);
+    let nameEnd = nameStart;
+    while (nameEnd < xml.length && isNameChar(xml.charCodeAt(nameEnd)))
+      nameEnd += 1;
+    if (nameEnd === nameStart) return { attributes, cursor };
+    const equals = skipSpace(xml, nameEnd);
+    if (xml[equals] !== "=") return { attributes, cursor };
+    const quote = skipSpace(xml, equals + 1);
+    const quoteChar = xml[quote];
+    if (quoteChar !== '"' && quoteChar !== "'") return { attributes, cursor };
+    const valueEnd = xml.indexOf(quoteChar, quote + 1);
+    if (valueEnd === -1) return { attributes, cursor };
+    attributes[xml.slice(nameStart, nameEnd)] = decode(
+      xml.slice(quote + 1, valueEnd)
+    );
+    cursor = valueEnd + 1;
+  }
+}
 function* scanTags(xml) {
   let index = 0;
   while (index < xml.length) {
@@ -665,17 +703,7 @@ function* scanTags(xml) {
       index = open + 1;
       continue;
     }
-    let cursor = NAME.lastIndex;
-    const attributes = {};
-    while (cursor < xml.length) {
-      ATTRIBUTE.lastIndex = cursor;
-      const attribute = ATTRIBUTE.exec(xml);
-      if (!attribute) break;
-      attributes[attribute[1]] = decode(
-        attribute[3] ?? attribute[4] ?? ""
-      );
-      cursor = ATTRIBUTE.lastIndex;
-    }
+    const { attributes, cursor } = readAttributes(xml, NAME.lastIndex);
     const end = xml.indexOf(">", cursor);
     if (end === -1) return;
     yield {
