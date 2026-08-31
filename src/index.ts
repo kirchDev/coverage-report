@@ -18,5 +18,6 @@ export {
   marker,
   renderCheckSummary,
   renderMarkdown,
+  renderText,
   thresholdFailures
 } from './render.ts';

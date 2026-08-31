@@ -7,6 +7,7 @@ import {
   marker,
   renderCheckSummary,
   renderMarkdown,
+  renderText,
   thresholdFailures
 } from '../src/render.ts';
 
@@ -119,6 +120,51 @@ describe('the comment body', () => {
       renderMarkdown({ totals, patch }),
       renderMarkdown({ totals, patch })
     );
+  });
+});
+
+describe('the terminal report', () => {
+  it('carries no markdown or HTML — a shell renders neither', () => {
+    const text = renderText({ totals, patch });
+    for (const noise of ['<details>', '<summary>', '|', '**', '<!--'])
+      assert.equal(text.includes(noise), false, `expected no ${noise}`);
+  });
+
+  it('states the same numbers the comment does', () => {
+    const text = renderText({ totals, patch });
+    assert.match(text, /Coverage\s+50\.00%\s+2\/4 lines/);
+    assert.match(text, /Patch\s+50\.00%\s+1\/2 changed lines/);
+  });
+
+  it('lists the uncovered changed lines under the file that has them', () => {
+    assert.match(renderText({ totals, patch }), /src\/a\.js\s+50\.00%\s+2/);
+  });
+
+  it('aligns the percentages into one column', () => {
+    const columns = renderText({ totals, patch })
+      .split('\n')
+      .filter((line) => line.includes('%') && !line.startsWith('  '))
+      .map((line) => line.indexOf('%'));
+
+    assert.equal(new Set(columns).size, 1);
+  });
+
+  it('says so plainly when nothing measurable changed', () => {
+    assert.match(
+      renderText({ totals, patch: patchCoverage(report, new Map()) }),
+      /no changed line carries coverage data/
+    );
+  });
+
+  it('shows the delta and the base it compared against', () => {
+    const base = toSummary(
+      reportOf({ 'src/a.js': { 1: 1, 2: 0, 3: 0, 4: 0 } }),
+      { sha: 'abc1234', ref: 'dev' }
+    );
+    const text = renderText({ totals, delta: coverageDelta(totals, base) });
+
+    assert.match(text, /▲ \+25\.00%/);
+    assert.match(text, /Compared against abc1234 on dev\./);
   });
 });
 

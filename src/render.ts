@@ -1,6 +1,11 @@
 import type { ReportTotals, Summary } from './coverage.ts';
 import { formatLineRanges } from './diff.ts';
-import type { CoverageDelta, MetricDelta, PatchCoverage } from './patch.ts';
+import type {
+  CoverageDelta,
+  FilePatch,
+  MetricDelta,
+  PatchCoverage
+} from './patch.ts';
 
 /** Percentages a run may be held to. Absent means "nobody asked". */
 export interface Thresholds {
@@ -63,6 +68,106 @@ export function renderMarkdown({
   }
 
   return `${lines.join('\n').trimEnd()}\n`;
+}
+
+/**
+ * The same numbers for a terminal.
+ *
+ * The comment body is Markdown for GitHub, so a local run prints `<details>`
+ * and pipe tables at a shell that renders neither. This is the same report as
+ * aligned columns — the CLI's own output, not a preview of somebody else's.
+ */
+export function renderText({
+  totals,
+  patch = null,
+  delta = null,
+  name = '',
+  fileLimit = 20
+}: RenderOptions): string {
+  const lines: string[] = [];
+  if (name) lines.push(name, '');
+
+  const metrics = (['lines', 'branches', 'functions'] as const)
+    .filter((metric) => totals[metric].total > 0)
+    .map((metric) => [
+      `${format(totals[metric].pct)}`,
+      `${totals[metric].covered}/${totals[metric].total} ${metric}`,
+      delta?.metrics?.[metric] ? renderDelta(delta.metrics[metric]) : ''
+    ]);
+
+  lines.push(...column('Coverage', metrics));
+
+  if (patch) {
+    lines.push('', ...column('Patch', patchRows(patch)));
+
+    const files = patch.files.filter((file) => file.uncovered.length > 0);
+    if (files.length > 0) {
+      lines.push('', ...fileRows(files, fileLimit));
+    }
+  }
+
+  if (delta?.base) {
+    const at = delta.base.sha ? delta.base.sha.slice(0, 7) : 'the base state';
+    const ref = delta.base.ref ? ` on ${delta.base.ref}` : '';
+    lines.push('', `Compared against ${at}${ref}.`);
+  }
+
+  return `${lines.join('\n').trimEnd()}\n`;
+}
+
+function patchRows(patch: PatchCoverage): string[][] {
+  if (patch.total === 0) {
+    return [['—', 'no changed line carries coverage data', '']];
+  }
+
+  const uncovered = patch.total - patch.covered;
+  return [
+    [
+      format(patch.pct),
+      `${patch.covered}/${patch.total} changed lines`,
+      uncovered === 0 ? 'all covered' : `${uncovered} uncovered`
+    ]
+  ];
+}
+
+function fileRows(files: FilePatch[], fileLimit: number): string[] {
+  const shown = files.slice(0, fileLimit);
+  const width = Math.max(...shown.map((file) => file.path.length));
+  const rows = shown.map(
+    (file) =>
+      `  ${file.path.padEnd(width)}  ${format(file.pct).padStart(7)}  ` +
+      formatLineRanges(file.uncovered, { limit: 8 })
+  );
+
+  const hidden = files.length - shown.length;
+  if (hidden > 0)
+    rows.push(`  … and ${hidden} more ${hidden === 1 ? 'file' : 'files'}`);
+
+  return rows;
+}
+
+/**
+ * Pads every column to its widest cell so the percentages line up, and repeats
+ * the label only on the first row — the rows under "Coverage" are the same
+ * measurement from three angles, not three separate headings.
+ */
+function column(label: string, rows: string[][]): string[] {
+  const labelWidth = Math.max(label.length + 2, 10);
+  const widths = rows.reduce<number[]>(
+    (widest, row) =>
+      row.map((cell, index) => Math.max(widest[index] ?? 0, cell.length)),
+    []
+  );
+
+  return rows.map((row, index) =>
+    `${(index === 0 ? label : '').padEnd(labelWidth)}${row
+      .map((cell, cellIndex) =>
+        cellIndex === 0
+          ? cell.padStart(widths[0] ?? 0)
+          : cell.padEnd(widths[cellIndex] ?? 0)
+      )
+      .join('  ')}`.trimEnd()
+  );
 }
 
 function totalsTable(
