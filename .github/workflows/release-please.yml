@@ -111,16 +111,42 @@ jobs:
       - name: Build
         run: pnpm build:npm
 
+      # THE BASE IS THE LAST PUBLISHED RELEASE, NOT THIS BRANCH'S package.json.
+      # release-please writes its version bump onto main and onto main alone, so
+      # a dev branch keeps whatever version it carried when it last forked, long
+      # after the release shipped. Reading package.json off the branch therefore
+      # published a version semver ranks BELOW the latest release, and `@dev`
+      # resolved to something older than `@latest`. Deriving the base from the
+      # release instead makes the prerelease version independent of whether main
+      # was ever merged back down.
       - name: Compute prerelease version
         id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
+
           if [ "${{ github.ref_name }}" = "main" ]; then
             TAG=dev-main
           else
             TAG=dev
           fi
-          BASE_VERSION=$(node -p "require('./package.json').version")
-          BASE=${BASE_VERSION%%-*}
+
+          # No release yet -- a repo fresh out of the template, whose 0.0.0
+          # manifest entry means "never released" -- leaves this empty, so fall
+          # back to the branch's own version. `|| true` because `gh release
+          # view` exits non-zero on an empty release list under `set -e`.
+          LATEST=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq '.tagName' 2>/dev/null || true)
+          LATEST=${LATEST#v}
+          if [ -z "$LATEST" ]; then
+            LATEST=$(node -p "require('./package.json').version")
+          fi
+
+          # Patch-bump the base so the prerelease sorts ABOVE the release it
+          # follows: dev carries commits made after that release, and
+          # 0.2.0-dev.N would rank below 0.2.0 while 0.2.1-dev.N ranks above it.
+          BASE=$(node -e 'const [a,b,c]=process.argv[1].split("-")[0].split(".").map(Number);console.log(`${a}.${b}.${c+1}`)' "$LATEST")
+
           SHORT_SHA=${GITHUB_SHA::7}
           NEW_VERSION="${BASE}-${TAG}.${{ github.run_number }}-${SHORT_SHA}"
           npm version --no-git-tag-version --allow-same-version "$NEW_VERSION"
