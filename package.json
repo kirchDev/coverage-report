@@ -1,7 +1,7 @@
 {
   "$schema": "https://www.schemastore.org/package.json",
   "name": "@kirchdev/coverage-report",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Coverage reporting on pull requests, straight from the reports your CI already writes — no third-party service.",
   "keywords": [
     "clover",
