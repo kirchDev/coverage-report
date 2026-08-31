@@ -8,7 +8,7 @@ import {
   type Format
 } from './parsers/index.ts';
 import { buildReport, type BuildResult } from './pipeline.ts';
-import { format as pct, type Thresholds } from './render.ts';
+import { format as pct, renderText, type Thresholds } from './render.ts';
 
 const sharedArgs = {
   report: {
@@ -22,11 +22,16 @@ const sharedArgs = {
     description: 'Repository root the report paths are made relative to.',
     default: process.cwd()
   },
-  format: {
+  'input-format': {
     type: 'string',
-    description: `Force a format (${FORMATS.join(', ')}) instead of detecting it from the content.`
+    description: `Force the format of the reports being read (${FORMATS.join(', ')}) instead of detecting it from the content.`
   }
 } satisfies ArgsDef;
+
+/** The shapes `render` can print. `text` is the default: a human ran the CLI. */
+const OUTPUTS = ['text', 'markdown', 'json'] as const;
+
+type Output = (typeof OUTPUTS)[number];
 
 const render = defineCommand({
   meta: {
@@ -51,13 +56,13 @@ const render = defineCommand({
     },
     output: {
       type: 'string',
-      description: 'Write the markdown here instead of to stdout.',
+      description: 'Write the rendered result here instead of to stdout.',
       alias: 'o'
     },
-    json: {
-      type: 'boolean',
-      description: 'Print the full result as JSON instead of markdown.',
-      default: false
+    format: {
+      type: 'string',
+      description: `How to render the result (${OUTPUTS.join(', ')}). The default reads at a terminal; markdown is the comment body a forge renders.`,
+      default: 'text'
     },
     'min-total': {
       type: 'string',
@@ -85,7 +90,7 @@ const render = defineCommand({
     const result = await buildReport({
       reports: reportsFrom(args, rawArgs),
       root: args.root,
-      format: toFormat(args.format),
+      format: toFormat(args['input-format']),
       diff: args.diff,
       base: args.base,
       name: args.name,
@@ -95,9 +100,10 @@ const render = defineCommand({
       thresholds: readThresholds(args)
     });
 
-    const output = args.json
-      ? `${JSON.stringify(asJson(result), null, 2)}\n`
-      : result.markdown;
+    const output = renderAs(toOutput(args.format), result, {
+      name: args.name,
+      fileLimit: Number(args['file-limit'])
+    });
 
     if (args.output) await writeFile(args.output, output);
     else process.stdout.write(output);
@@ -134,7 +140,7 @@ const merge = defineCommand({
         (
           await parseFile(path, {
             root: args.root,
-            format: toFormat(args.format)
+            format: toFormat(args['input-format'])
           })
         ).report
       );
@@ -215,16 +221,39 @@ interface ThresholdArgs {
 }
 
 /**
- * Validates `--format` rather than passing the string through. An unknown value
- * would otherwise reach the parser table, miss, and surface as a confusing
+ * Validates `--input-format` rather than passing the string through. An unknown
+ * value would otherwise reach the parser table, miss, and surface as a confusing
  * "unsupported format" far from where it was typed.
  */
 function toFormat(value: string | undefined): Format | null {
   if (!value) return null;
   if ((FORMATS as readonly string[]).includes(value)) return value as Format;
   throw new Error(
-    `Unknown format "${value}". Expected one of ${FORMATS.join(', ')}.`
+    `Unknown input format "${value}". Expected one of ${FORMATS.join(', ')}.`
   );
+}
+
+function toOutput(value: string): Output {
+  if ((OUTPUTS as readonly string[]).includes(value)) return value as Output;
+  throw new Error(
+    `Unknown format "${value}". Expected one of ${OUTPUTS.join(', ')}.`
+  );
+}
+
+function renderAs(
+  output: Output,
+  result: BuildResult,
+  options: { name: string; fileLimit: number }
+): string {
+  if (output === 'json') return `${JSON.stringify(asJson(result), null, 2)}\n`;
+  if (output === 'markdown') return result.markdown;
+  return renderText({
+    totals: result.totals,
+    patch: result.patch,
+    delta: result.delta,
+    name: options.name,
+    fileLimit: options.fileLimit
+  });
 }
 
 function toArray(value: unknown): string[] {

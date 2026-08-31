@@ -103,12 +103,42 @@ describe('the command line', () => {
       '--report',
       REPORTS.join(',')
     ]);
-    assert.match(output, /2079|5 \/ 8/);
+    assert.match(output, /5\/8 lines/);
   });
 
   it('takes several reports as positional arguments', () => {
     const output = cli(['render', '--root', '/build/workspace', ...REPORTS]);
-    assert.match(output, /5 \/ 8/);
+    assert.match(output, /5\/8 lines/);
+  });
+
+  it('renders for a terminal unless asked for the comment body', () => {
+    // A human at a shell is the one who types this; markdown tables and a
+    // <details> block are what a forge renders, not what a terminal does.
+    const args = ['render', '--root', '/build/workspace', ...REPORTS];
+
+    const text = cli(args);
+    assert.equal(text.includes('<details>'), false);
+    assert.match(text, /^Coverage\s+62\.50%/);
+
+    const markdown = cli([...args, '--format', 'markdown']);
+    assert.ok(markdown.startsWith('<!-- coverage-report -->'));
+
+    const json = JSON.parse(cli([...args, '--format', 'json'])) as {
+      totals: { lines: { covered: number } };
+    };
+    assert.equal(json.totals.lines.covered, 5);
+  });
+
+  it('names the formats it knows rather than printing an empty report', () => {
+    assert.throws(
+      () => cli(['render', '--report', FIRST_REPORT, '--format', 'html']),
+      /Expected one of text, markdown, json/
+    );
+    assert.throws(
+      () =>
+        cli(['render', '--report', FIRST_REPORT, '--input-format', 'jacoco']),
+      /Expected one of lcov, cobertura, clover, istanbul/
+    );
   });
 
   it('refuses a repeated --report rather than silently keeping the last one', () => {
@@ -147,7 +177,7 @@ describe('the command line', () => {
       '--min-total',
       '50'
     ]);
-    assert.match(output, /🟢 Lines/);
+    assert.match(output, /62\.50%/);
   });
 
   it('writes the base state the next run reads back', () => {
