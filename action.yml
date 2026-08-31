@@ -13,8 +13,8 @@ inputs:
       detected from the content, and several reports merge into one number —
       that is the point of the input taking a list.
     required: true
-  format:
-    description: 'Force a format (lcov, cobertura, clover, istanbul) instead of detecting it.'
+  input-format:
+    description: 'Force the format of the reports being read (lcov, cobertura, clover, istanbul) instead of detecting it.'
     required: false
     default: ''
   root:

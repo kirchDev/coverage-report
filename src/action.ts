@@ -296,7 +296,7 @@ export function readInputs(env: ActionEnv): ActionInputs {
   return {
     reports,
     token,
-    format: (input(env, 'format') || null) as Format | null,
+    format: (input(env, 'input-format') || null) as Format | null,
     root: input(env, 'root') || env.GITHUB_WORKSPACE || process.cwd(),
     name: input(env, 'name') || '',
     comment: boolean(input(env, 'comment'), true),
