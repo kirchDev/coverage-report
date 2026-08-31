@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0](https://github.com/kirchDev/coverage-report/compare/v0.2.0...v0.3.0) (2026-08-31)
+
+
+### ⚠ BREAKING CHANGES
+
+* **cli:** `render` prints the terminal report instead of the comment body — pass `--format markdown` for the previous default. The `--json` and `--text` switches are gone, replaced by `--format text|markdown|json`. Forcing the format of the reports being read moves from `--format` to `--input-format`, and the action's `format` input is renamed to `input-format` with it.
+
+### Features
+
+* **cli:** default to the terminal report and rename the input format flag ([c0a578b](https://github.com/kirchDev/coverage-report/commit/c0a578b064258a96c7d9f2417e5c03514b4b6619))
+* **render:** add a terminal report beside the comment body ([7242684](https://github.com/kirchDev/coverage-report/commit/7242684d2c161c57af7a0cae5915412c1b5520ca))
+
 ## [0.2.0](https://github.com/kirchDev/coverage-report/compare/v0.1.0...v0.2.0) (2026-08-30)
 
 
