@@ -20,4 +20,4 @@ permissions:
 jobs:
   check:
     name: CI
-    uses: kirchDev/workflows/.github/workflows/_ci-check.yml@f47f598f549a3c97924fdfd00f15371ea557e1aa # v0.1.1
+    uses: kirchDev/workflows/.github/workflows/_ci-check.yml@f81bbe5fb5e8055b55a1ef5f861cc63a8e253622 # v0.1.3
