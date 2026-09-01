@@ -23,7 +23,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    uses: kirchDev/workflows/.github/workflows/_release-please.yml@aa8e987671b566e3649899a923a8016322601156 # v0.1.0
+    uses: kirchDev/workflows/.github/workflows/_release-please.yml@f47f598f549a3c97924fdfd00f15371ea557e1aa # v0.1.1
     with:
       # This repo is consumed as `kirchDev/coverage-report@<ref>`, so `@v0` has
       # to keep meaning "the newest v0.x.y".
@@ -41,7 +41,7 @@ jobs:
       # NPM_TOKEN exists in this repo; npm verifies this workflow against the
       # trusted publisher configured on the package.
       id-token: write
-    uses: kirchDev/workflows/.github/workflows/_publish-npm.yml@aa8e987671b566e3649899a923a8016322601156 # v0.1.0
+    uses: kirchDev/workflows/.github/workflows/_publish-npm.yml@f47f598f549a3c97924fdfd00f15371ea557e1aa # v0.1.1
     with:
       tag-name: ${{ needs.release-please.outputs.tag-name }}
       # The npm artifact is lib/, built by build:npm — not the action bundle in
@@ -63,7 +63,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    uses: kirchDev/workflows/.github/workflows/_publish-npm.yml@aa8e987671b566e3649899a923a8016322601156 # v0.1.0
+    uses: kirchDev/workflows/.github/workflows/_publish-npm.yml@f47f598f549a3c97924fdfd00f15371ea557e1aa # v0.1.1
     with:
       prerelease: true
       build-script: build:npm
