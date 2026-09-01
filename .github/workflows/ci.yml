@@ -1,5 +1,6 @@
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 
+# The checks come from this repo's own `check` script in package.json.
 name: CI
 
 on:
@@ -8,100 +9,15 @@ on:
       - main
       - dev
     types: [opened, synchronize, reopened, ready_for_review]
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - LICENSE
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
-  lint:
-    name: Lint & Format
-    runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Format check
-        run: pnpm format
-
-      - name: Agent policy parity
-        run: pnpm check:policy
-
-  test:
-    name: Tests
-    runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Test
-        run: pnpm test
-
-      # dist/ is committed because a node action runs it straight from the
-      # checkout. A source fix that nobody rebuilt would otherwise ship green
-      # while every consumer keeps running the old bundle.
-      - name: Bundle is current
-        run: pnpm check:dist
-
-  coverage:
-    name: Coverage
-    runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false
-    permissions:
-      contents: read
-      pull-requests: write
-      checks: write
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Measure
-        run: pnpm test:coverage
-
-      # This repository reports its own coverage with itself, from the checkout
-      # rather than from a release: a change that breaks the action fails here
-      # before it can be tagged. `base-branch` is empty because the base state
-      # needs `contents: write`, which a pull request from a fork does not get.
-      - name: Report
-        uses: ./
-        with:
-          reports: coverage/lcov.info
-          min-total: '90'
-          min-patch: '80'
-          base-branch: ''
+  check:
+    name: CI
+    uses: kirchDev/workflows/.github/workflows/_ci-check.yml@f47f598f549a3c97924fdfd00f15371ea557e1aa # v0.1.1
