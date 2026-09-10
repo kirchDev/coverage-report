@@ -8,7 +8,6 @@ on:
   push:
     branches:
       - main
-      - dev
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -17,13 +16,12 @@ concurrency:
 jobs:
   release-please:
     name: Release Please
-    # `dev` reaches this workflow for the prerelease job below; release-please
-    # itself only ever runs on the release branch.
+    # Release-please only ever runs on the release branch.
     if: github.ref_name == 'main'
     permissions:
       contents: write
       pull-requests: write
-    uses: kirchDev/workflows/.github/workflows/_release-please.yml@94cbcbd676b989ac6c6327055a240132f5cd76a5 # v0.8.0
+    uses: kirchDev/workflows/.github/workflows/_release-please.yml@1e57db95ff601f03ae87b78e329ef238f9d0cbf6 # v0.8.2
     with:
       # This repo is consumed as `kirchDev/coverage-report@<ref>`, so `@v0` has
       # to keep meaning "the newest v0.x.y".
@@ -41,7 +39,7 @@ jobs:
       # NPM_TOKEN exists in this repo; npm verifies this workflow against the
       # trusted publisher configured on the package.
       id-token: write
-    uses: kirchDev/workflows/.github/workflows/_publish-npm.yml@94cbcbd676b989ac6c6327055a240132f5cd76a5 # v0.8.0
+    uses: kirchDev/workflows/.github/workflows/_publish-npm.yml@1e57db95ff601f03ae87b78e329ef238f9d0cbf6 # v0.8.2
     with:
       tag-name: ${{ needs.release-please.outputs.tag-name }}
       # The npm artifact is lib/, built by build:npm — not the action bundle in
@@ -53,17 +51,14 @@ jobs:
     # Skip the version-bump merges release-please pushes onto main.
     if: >-
       ${{
-        github.ref_name == 'dev'
-        || (
-          github.ref_name == 'main'
-          && !startsWith(github.event.head_commit.message, 'chore(main): release')
-          && !startsWith(github.event.head_commit.message, 'chore: release')
-        )
+        github.ref_name == 'main'
+        && !startsWith(github.event.head_commit.message, 'chore(main): release')
+        && !startsWith(github.event.head_commit.message, 'chore: release')
       }}
     permissions:
       contents: read
       id-token: write
-    uses: kirchDev/workflows/.github/workflows/_publish-npm.yml@94cbcbd676b989ac6c6327055a240132f5cd76a5 # v0.8.0
+    uses: kirchDev/workflows/.github/workflows/_publish-npm.yml@1e57db95ff601f03ae87b78e329ef238f9d0cbf6 # v0.8.2
     with:
       prerelease: true
       build-script: build:npm
