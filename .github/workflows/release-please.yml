@@ -8,7 +8,6 @@ on:
   push:
     branches:
       - main
-      - dev
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -17,8 +16,7 @@ concurrency:
 jobs:
   release-please:
     name: Release Please
-    # `dev` reaches this workflow for the prerelease job below; release-please
-    # itself only ever runs on the release branch.
+    # Release-please only ever runs on the release branch.
     if: github.ref_name == 'main'
     permissions:
       contents: write
@@ -53,12 +51,9 @@ jobs:
     # Skip the version-bump merges release-please pushes onto main.
     if: >-
       ${{
-        github.ref_name == 'dev'
-        || (
-          github.ref_name == 'main'
-          && !startsWith(github.event.head_commit.message, 'chore(main): release')
-          && !startsWith(github.event.head_commit.message, 'chore: release')
-        )
+        github.ref_name == 'main'
+        && !startsWith(github.event.head_commit.message, 'chore(main): release')
+        && !startsWith(github.event.head_commit.message, 'chore: release')
       }}
     permissions:
       contents: read
