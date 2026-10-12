@@ -1,5 +1,41 @@
 # Changelog
 
+## [0.4.0](https://github.com/kirchDev/coverage-report/compare/v0.3.0...v0.4.0) (2026-10-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* move to pnpm 12
+* this repository now requires pnpm 12.
+
+### Features
+
+* **ci:** call the central release-please and npm publish bodies ([6117c33](https://github.com/kirchDev/coverage-report/commit/6117c33dc0f884b3a0b34637f2410e24224e6970))
+* **ci:** call the central workflow bodies instead of copying them ([0991427](https://github.com/kirchDev/coverage-report/commit/0991427999c122e054bf1f8a482418478411e63d))
+
+
+### Bug Fixes
+
+* **ci:** bump the workflow bodies to v0.1.3 ([c05472d](https://github.com/kirchDev/coverage-report/commit/c05472d899b206e80fd0a437d5d56dcce6a3edfd))
+* **ci:** derive the prerelease base from the latest release ([51208cf](https://github.com/kirchDev/coverage-report/commit/51208cfb9a459858d315c25a3ffc0ccd454fca21))
+* **ci:** pin the bodies to the v0.1.0 SHA in full ([ad19621](https://github.com/kirchDev/coverage-report/commit/ad196212dfc1a278925227aa83738d634a1adf64))
+* **ci:** pin the workflow bodies to v0.2.0 and drop paths-ignore ([1caf2d0](https://github.com/kirchDev/coverage-report/commit/1caf2d02956c544cba0225a97fdcc3d9a892075d))
+* **ci:** pin the workflow bodies to v0.5.0 ([c3bdbef](https://github.com/kirchDev/coverage-report/commit/c3bdbefbbf263cf41ba337834a31e72234b2e0e1))
+* **ci:** pin the workflow bodies to v0.7.0 ([98986a6](https://github.com/kirchDev/coverage-report/commit/98986a6567c2fac6897a44a537fddfc3fe665a3b))
+* **ci:** publish prereleases only from main ([0890964](https://github.com/kirchDev/coverage-report/commit/089096416401b309a264889a0e4a68f62028d296))
+* **config:** correct the codex policy match examples ([dec02b4](https://github.com/kirchDev/coverage-report/commit/dec02b4f1ca9135793b9aa8b19e3fc4f60da96c0))
+
+
+### Reverts
+
+* go back to pnpm 11.25.0 ([73cbf7a](https://github.com/kirchDev/coverage-report/commit/73cbf7ab7ef639d10bd6322a468c5210c774ee58))
+
+
+### Miscellaneous Chores
+
+* move to pnpm 12 ([d71ee36](https://github.com/kirchDev/coverage-report/commit/d71ee365aa9e109b8c775c477d1443eea629bef7))
+* move to pnpm 12 ([ee57c6c](https://github.com/kirchDev/coverage-report/commit/ee57c6c6cb663835239c3318632b1ca284e9b3a6))
+
 ## [0.3.0](https://github.com/kirchDev/coverage-report/compare/v0.2.0...v0.3.0) (2026-08-31)
 
 
